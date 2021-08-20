@@ -53,11 +53,13 @@ run_scenario <-
            Rt2 = 2.5,
            tt_Rt1 = 50,
            tt_Rt2 = 200,
-           time_period = 100,
+           time_period = 365,
            vaccine_doses = 2,
            max_coverage = 0.2,
            dt = 0.5,
            nrep = 10){
+    
+    stopifnot(all(c(tt_Rt1, tt_Rt2) < time_period))
     
     # Population and mixing
     rep_country <- get_representative_country(income_group = income_group)
@@ -93,7 +95,6 @@ run_scenario <-
       iso3c = iso3c,
       R0 = c(R0, Rt1, Rt2),
       tt_R0 = c(0, tt_Rt1, tt_Rt2),
-      beta_set = NULL,
       time_period = time_period,
       dt = dt,
       hosp_bed_capacity = hc$hosp_beds,
@@ -119,59 +120,45 @@ run_scenario <-
 
     
     # run the simulation
-      saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
-        
-        # creates the categorical states and ages for the simulated population
-        variables <- create_variables(pop = pop, parameters = parameters)
-        variables <- create_vaccine_variables(variables = variables, parameters = parameters)
-        
-        # creates the list of events and attaches listeners which handle state changes and queue future events
-        events <- create_events(parameters = parameters)
-        events <- create_events_vaccination(events = events, parameters = parameters)
-        attach_event_listeners(variables = variables, events = events, parameters = parameters, dt = dt)
-        attach_event_listeners_vaccination(variables = variables,events = events,parameters = parameters,dt = dt)
-        
-        # renderer object is made
-        renderer <- individual::Render$new(parameters$time_period)
-        ab_renderer <- matrix(data = NaN,nrow = parameters$time_period,ncol = sum(parameters$population))
-        dose_renderer <- individual::Render$new(parameters$time_period)
-        
-        double_count_render_process_daily <- function(variable, dt) {
-          stopifnot(inherits(variable, "DoubleVariable"))
-          function(t) {
-            if ((t * dt) %% 1 == 0) {
-              ab_renderer[as.integer(t * dt), ] <<- variable$get_values()
-            }
-          }
-        }
-        
-        # processes
-        processes <- list(
-          vaccine_ab_titre_process(parameters = parameters,variables = variables,events = events,dt = dt),
-          vaccination_process(parameters = parameters,variables = variables,events = events,dt = dt),
-          infection_process_vaccine_cpp(parameters = parameters,variables = variables,events = events,dt = dt),
-          categorical_count_renderer_process_daily(renderer = renderer,variable = variables$states,categories = variables$states$get_categories(),dt = dt),
-          double_count_render_process_daily(variable = variables$ab_titre,dt = dt),
-          integer_count_render_process_daily(renderer = dose_renderer,variable = variables$dose_num,margin = 0:vaccine_doses,dt = dt)
-        )
-        
-        # schedule events for individuals at initialisation
-        setup_events_vaccine(parameters = parameters,
-                             events = events,
-                             variables = variables,
-                             dt = dt) 
-        
-        
-        simulation_loop_vaccine(
-          variables = variables,
-          events = events,
-          processes = processes,
-          timesteps = timesteps
-        )
-        df <- renderer$to_dataframe()
-        df$repetition <- x
-        return(df)
-      })
+    saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
+      
+      # creates the categorical states and ages for the simulated population
+      variables <- create_variables(pop = pop, parameters = parameters)
+      variables <- create_vaccine_variables(variables = variables, parameters = parameters)
+      
+      # creates the list of events and attaches listeners which handle state changes and queue future events
+      events <- create_events(parameters = parameters)
+      events <- create_events_vaccination(events = events, parameters = parameters)
+      attach_event_listeners(variables = variables, events = events, parameters = parameters, dt = dt)
+      attach_event_listeners_vaccination(variables = variables,events = events,parameters = parameters,dt = dt)
+      
+      # renderer object is made
+      renderer <- individual::Render$new(parameters$time_period)
+      
+      # processes
+      processes <- list(
+        vaccine_ab_titre_process(parameters = parameters,variables = variables,events = events,dt = dt),
+        vaccination_process(parameters = parameters,variables = variables,events = events,dt = dt),
+        infection_process_vaccine_cpp(parameters = parameters,variables = variables,events = events,dt = dt),
+        categorical_count_renderer_process_daily(renderer = renderer,variable = variables$states,categories = variables$states$get_categories(),dt = dt)
+      )
+      
+      # schedule events for individuals at initialisation
+      setup_events_vaccine(parameters = parameters,
+                           events = events,
+                           variables = variables,
+                           dt = dt)
+      
+      simulation_loop_vaccine(
+        variables = variables,
+        events = events,
+        processes = processes,
+        timesteps = timesteps
+      )
+      df <- renderer$to_dataframe()
+      df$repetition <- x
+      return(df)
+    })
     
     # bind results
     saf_reps <- do.call(rbind,saf_reps)
