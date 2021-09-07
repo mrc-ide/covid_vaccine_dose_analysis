@@ -53,10 +53,12 @@ run_scenario <-
            Rt2 = 2.5,
            tt_Rt1 = 50,
            tt_Rt2 = 200,
+           vacc_start = 30,
            time_period = 365,
            vaccine_doses = 2,
-           max_coverage = 0.2,
-           dt = 0.5,
+           max_coverage = 0.8,
+           coverage = 0.2,
+           dt = 1,
            nrep = 10){
     
     stopifnot(all(c(tt_Rt1, tt_Rt2) < time_period))
@@ -78,11 +80,15 @@ run_scenario <-
     # Vaccine parameters
     # dosing
     if (vaccine_doses == 2) {dose_period <- c(NaN, 28)}
-    if (vaccine_doses == 3) {dose_period <- c(NaN, 28, 150)}
-    # doses available each day
-    vaccine_set <- c(0, seq(from = 1e3, to = 1e4, length.out = time_period - 1))
-    vaccine_set <- floor(vaccine_set)
+    if (vaccine_doses == 3) {dose_period <- c(NaN, 28, 268)}
     
+    # doses available each day
+    doses_per_day <- floor(sum(pop$n) * 0.025 / 7)
+    # check how many days it takes to vaccinate to desired coverage with 2 doses
+    days_to_vacc <- floor(coverage / (0.025/7) * max_coverage * 2)
+    # vaccine vector: vector of length time_period
+    vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, days_to_vacc), rep(0, 240 - days_to_vacc), rep(doses_per_day, time_period - vacc_start  - 240))
+
     # vaccine strategy
     vaccine_coverage_mat <- strategy_matrix(strategy = "Elderly", max_coverage = max_coverage)
     next_dose_priority <- matrix(data = 0, nrow = vaccine_doses - 1, ncol = ncol(vaccine_coverage_mat))
@@ -99,11 +105,12 @@ run_scenario <-
       dt = dt,
       hosp_bed_capacity = hc$hosp_beds,
       ICU_bed_capacity = hc$ICU_beds,
-      prob_non_severe_death_treatment = pnsdt
+      prob_non_severe_death_treatment = pnsdt,
+      dur_R = 365
     )
     
     # vaccine parameters
-    ab_parameters <- get_vaccine_ab_titre_parameters(vaccine = "Pfizer", max_dose = vaccine_doses, correlated = FALSE)
+    ab_parameters <- get_vaccine_ab_titre_parameters(vaccine = "Pfizer", max_dose = vaccine_doses, correlated = TRUE)
     
     # combine parameters and verify
     parameters <- make_vaccine_parameters(
@@ -118,7 +125,6 @@ run_scenario <-
     # create variables
     timesteps <- parameters$time_period/dt
 
-    
     # run the simulation
     saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
       
@@ -134,13 +140,15 @@ run_scenario <-
       
       # renderer object is made
       renderer <- individual::Render$new(parameters$time_period)
+      vaxx_renderer <- individual::Render$new(parameters$time_period)
       
       # processes
       processes <- list(
-        vaccine_ab_titre_process(parameters = parameters,variables = variables,events = events,dt = dt),
-        vaccination_process(parameters = parameters,variables = variables,events = events,dt = dt),
-        infection_process_vaccine_cpp(parameters = parameters,variables = variables,events = events,dt = dt),
-        categorical_count_renderer_process_daily(renderer = renderer,variable = variables$states,categories = variables$states$get_categories(),dt = dt)
+        vaccine_ab_titre_process(parameters = parameters,variables = variables,events = events, dt = dt),
+        vaccination_process(parameters = parameters,variables = variables,events = events, dt = dt),
+        infection_process_vaccine_cpp(parameters = parameters,variables = variables,events = events, dt = dt),
+        categorical_count_renderer_process_daily(renderer = renderer, variable = variables$states, categories = variables$states$get_categories(),dt = dt),
+        integer_count_render_process_daily(renderer = vaxx_renderer, variable = variables$dose_num, margin = 1:4, dt = dt)
       )
       
       # schedule events for individuals at initialisation
@@ -156,7 +164,10 @@ run_scenario <-
         timesteps = timesteps
       )
       df <- renderer$to_dataframe()
+      df_vacc <- vaxx_renderer$to_dataframe()
+      df_vacc$repetition <- x
       df$repetition <- x
+      df <- left_join(df, df_vacc, by = c("timestep", "repetition"))
       return(df)
     })
     
@@ -167,21 +178,29 @@ run_scenario <-
     saf_reps_summarise <- saf_reps %>%
       mutate(IMild_count = IMild_count + IAsymp_count) %>%
       select(-IAsymp_count) %>%
-      mutate(scenario = scenario) %>%
       pivot_longer(cols = contains("count"), names_to = "compartment") %>%
-      filter(compartment == "D_count") %>%
-      group_by(scenario, compartment, repetition) %>%
-      mutate(deaths = sum(value)) %>%
-      group_by(scenario, compartment) %>%
+      filter(compartment %in% c("D_count", "X1_count", "X2_count", "X3_count")) %>%
+      group_by(compartment, repetition) %>%
+      mutate(value = value - lag(value),
+             value = if_else(is.na(value), 0, value)) %>%
+      ungroup() %>%
+      pivot_wider(id_cols = c(timestep, repetition,), names_from = "compartment", values_from = "value") %>%
+      group_by(repetition) %>%
+      mutate(deaths = sum(D_count),
+             vaccines = sum(X1_count + X2_count + X3_count)) %>%
+      ungroup() %>%
       mutate(deaths_med = median(deaths),
              deaths_lower = quantile(deaths, 0.025),
-             deaths_upper = quantile(deaths, 0.975)) %>%
-      group_by(timestep, scenario, compartment, deaths_med, deaths_lower, deaths_upper) %>%
-      summarise(y = median(value),
-                ymin = quantile(value, 0.025),
-                ymax = quantile(value, 0.975),
+             deaths_upper = quantile(deaths, 0.975),
+             vaccines_med = median(vaccines)) %>%
+      group_by(timestep, deaths_med, deaths_lower, deaths_upper, vaccines_med) %>%
+      summarise(deaths_t = median(D_count),
+                deaths_tmin = quantile(D_count, 0.025),
+                deaths_tmax = quantile(D_count, 0.975),
+                vaccines_t = median(X1_count + X2_count + X3_count),
                 .groups = 'drop') %>%
-      nest(cols = c(timestep, y, ymin, ymax))
+      nest(cols = c(timestep, deaths_t, deaths_tmin, deaths_tmax, vaccines_t)) %>%
+      mutate(scenario = scenario)
     
     return(saf_reps_summarise)
   }

@@ -10,22 +10,21 @@ library(furrr)
 
 source("function_vacc_dose_strategies.R")
 
-options("mc.cores" = 2)
-
 hs_constraints <- "Present"
-income_group <- "HIC"
-target_pop <- 50e2
-nrep <- 10
+income_group <- "HIC" #c("HIC", "UMIC", "LMIC", "LIC")
+target_pop <- 50e4
 R0 <- 2
 Rt1 <- 1.05
-Rt2 <- 4
-tt_Rt1 <- 20
-tt_Rt2 <- 70
-dt <- 0.1
+Rt2 <- 3
+tt_Rt1 <- 40
+tt_Rt2 <- 300+180
+dt <- 1
 nrep <- 5
-time_period <- 100
-vaccine_doses <- 2
-max_coverage <- c(0.2, 0.5)
+time_period <- 300+365+365
+vacc_start <- 300+60
+vaccine_doses <- c(2,3)
+max_coverage <- c(0, 0.8)
+coverage <- c(0.2,0.5)
 
 #### Create scenarios ##########################################################
 
@@ -40,6 +39,8 @@ scenarios <- expand_grid(income_group = income_group,
                          time_period = time_period,
                          vaccine_doses = vaccine_doses,
                          max_coverage = max_coverage,
+                         coverage = coverage,
+                         vacc_start = vacc_start,
                          dt = dt,
                          nrep = nrep)
 
@@ -48,11 +49,11 @@ scenarios$scenario <- 1:nrow(scenarios)
 nrow(scenarios)
 
 #### Run the model #############################################################
-plan(multiprocess, workers = 2)
-system.time({out <- future_pmap(scenarios, run_scenario, .progress = TRUE,)})
+plan(multicore, workers = 2)
+system.time({out <- future_pmap(scenarios, run_scenario, .progress = TRUE)})
 
 #### Format output #############################################################
-out_format <- left_join(scenarios, out)
+out_format <- left_join(scenarios, do.call(rbind,out), by = "scenario")
 
 ### Save output ################################################################
 saveRDS(out_format, "output/1_vaccine_dose_strategies.rds")
