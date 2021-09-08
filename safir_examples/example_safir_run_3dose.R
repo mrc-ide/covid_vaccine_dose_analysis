@@ -16,7 +16,7 @@ library(data.table)
 
 # some parameters for safir
 tmax <- 365
-dt <- 0.25
+dt <- 0.2
 
 R0 <- c(2, 1.05, 1.85)
 tt_R0 <- c(0, 30, 200)
