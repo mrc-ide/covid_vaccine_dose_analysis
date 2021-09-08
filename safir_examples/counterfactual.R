@@ -31,28 +31,34 @@ hs_constraints = "Present"
 # tt_R0 <- c(0, as.integer(difftime(R0_t1, R0_t0)), as.integer(difftime(R0_t2, R0_t0)))
 # seeding_cases <- 20
 
+# the inflection points in the piecewise linear R0
 R0_t0 <- as.Date(x = "3/1/2020", format = "%m/%d/%Y")
 R0_t1 <- as.Date(x = "5/1/2020", format = "%m/%d/%Y")
 R0_t2 <- as.Date(x = "5/1/2021", format = "%m/%d/%Y")
 R0_t3 <- as.Date(x = "7/1/2021", format = "%m/%d/%Y")
 
+# slope change points in terms of numeric days
 t1 <- as.integer(difftime(R0_t1, R0_t0))
 t2 <- as.integer(difftime(R0_t2, R0_t0))
 t3 <- as.integer(difftime(R0_t3, R0_t0))
 
+# first piecewise element: initial decay
 R0_v0 <- 2.5
 R0_v1 <- 1.35
 R0_seq1 <- seq(from = 0, to = t1, by = 1)
 R0_vseq1 <- approx(x = c(0, t1), y = c(R0_v0, R0_v1), xout = R0_seq1)$y
 
+# third piecewise element: second wave
 R0_v2 <- 2
 R0_seq2 <- seq(from = t2, to = t3, by = 1)
 R0_vseq2 <- approx(x = c(t2, t3), y = c(R0_v1, R0_v2), xout = R0_seq2)$y
 
+# stick them together for get_parameters to turn into time series of beta
 tt_R0 <- c(R0_seq1, R0_seq2)
 R0 <- c(R0_vseq1, R0_vseq2)
 seeding_cases <- 20
 
+# simulation parameters
 time_period <- 365*2
 dt <- 0.2
 nrep <- 10 # for MC reps
@@ -110,7 +116,7 @@ doses_per_day <- floor(sum(pop$n) * 0.025 / 7)
 days_to_vacc <- floor(coverage / (0.025/7) * max_coverage * 2)
 # vaccine vector: vector of length time_period
 vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, days_to_vacc), rep(0, 240 - days_to_vacc), rep(doses_per_day, time_period - vacc_start  - 240))
-vaccine_set <- vaccine_set * 0 # no vaccines for this run
+vaccine_set <- vaccine_set * 0 # no vaccines for this run (baseline)
 
 vaccine_coverage_strategy <- list()
 vaccine_coverage_strategy[[1]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
@@ -131,7 +137,7 @@ vaccine_parameters <- make_vaccine_parameters(
 )
 
 # --------------------------------------------------------------------------------
-# run safir-squire
+# run safir-squire; faster to calibrate with this version of the model
 # --------------------------------------------------------------------------------
 
 system.time(
@@ -177,7 +183,8 @@ ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
 
 saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
 
-
+# a bit of a fudge to plot R0 on top of the deaths...scale it to that
+# max R0 is roughly in the middle of the y-axis (about 60 deaths/day)
 R0_df <- data.frame(x = c(tt_R0, time_period), y = c(R0, R0[length(R0)]))
 scaling_factor <- (60 / max(R0_df$y))
 R0_df$y <- R0_df$y * scaling_factor
@@ -196,7 +203,7 @@ ggplot(data = saf_deaths) +
 
 
 # --------------------------------------------------------------------------------
-# run safir-vaccination model
+# run safir-vaccination model, but not distributing any vaccines
 # --------------------------------------------------------------------------------
 
 system.time(
@@ -257,6 +264,7 @@ ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
 
 saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
 
+# again, the fudge to plot R0 on the same ggplot
 R0_df <- data.frame(x = c(tt_R0, time_period), y = c(R0, R0[length(R0)]))
 scaling_factor <- (60 / max(R0_df$y))
 R0_df$y <- R0_df$y * scaling_factor
