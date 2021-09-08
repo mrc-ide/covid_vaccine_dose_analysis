@@ -59,7 +59,8 @@ run_scenario <-
            max_coverage = 0.8,
            coverage = 0.2,
            dt = 1,
-           nrep = 10){
+           nrep = 10,
+           seeding_cases = seeding_cases){
     
     stopifnot(all(c(tt_Rt1, tt_Rt2) < time_period))
     
@@ -94,11 +95,46 @@ run_scenario <-
     vaccine_coverage_strategy <- list()
     vaccine_coverage_strategy[[1]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
     vaccine_coverage_strategy[[2]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
-    vaccine_coverage_strategy[[3]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
+    if (vaccine_doses == 3) {
+    vaccine_coverage_strategy[[3]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)}
     
     next_dose_priority <- matrix(data = 0, nrow = vaccine_doses - 1,ncol = ncol(vaccine_coverage_strategy[[1]]))
     next_dose_priority[1:nrow(next_dose_priority), 15:17] <- 1 # prioritize 3 oldest age groups for next dose
     
+    # --------------------------------------------------------------------------------
+    # vaccine parameters (I took these from your code here: https://github.com/mrc-ide/covid-titre-efficacy/blob/main/vaccines_with_booster.R)
+    # --------------------------------------------------------------------------------
+    
+    variant_fold_reduction <- 4
+    dose_3_fold_increase <- 6
+    
+    mu_ab_list <- data.frame(name = c("Oxford-AstraZeneca", "Pfizer", "Moderna"),
+                             mu_ab_d1 = c(20/59, 20/94, ((185+273)/2)/321),
+                             mu_ab_d2 = c(32/59, 223/94,  654/158)) %>%
+      mutate(mu_ab_d1 = mu_ab_d1/variant_fold_reduction,
+             mu_ab_d2 = mu_ab_d2/variant_fold_reduction) %>%
+      mutate(mu_ab_d3 = mu_ab_d2 * dose_3_fold_increase)
+    
+    
+    ab_50 <- 0.2 # titre relative to convalescent required to provide 50% protection from infection, on linear scale
+    ab_50_severe <- 0.03
+    std10 <- 0.44 # Pooled standard deviation of antibody level on log10 data
+    k <- 2.94 # shape parameter of efficacy curve
+    t_d2 <- 84 # timing of second dose relative to first
+    t_d3 <- 240 # timing of third dose relative to second
+    hl_s <- 108 # Half life of antibody decay - short
+    hl_l <- 3650 # Half life of antibody decay - long
+    period_s <- 250
+    t_period_l <- 365 # Time point at which to have switched to longest half-life
+    
+    # parameters related to ab titre and efficacy
+    ab_parameters <- get_vaccine_ab_titre_parameters(
+      vaccine = "Pfizer", max_dose = vaccine_doses, correlated = TRUE,
+      hl_s = hl_s, hl_l = hl_l, period_s = period_s, t_period_l = t_period_l,
+      ab_50 = ab_50, ab_50_severe = ab_50_severe, std10 = std10, k = k,
+      mu_ab_list = mu_ab_list
+    )
+   
     # base parameters
     parameters <- safir::get_parameters(
       population = pop$n,
@@ -112,11 +148,8 @@ run_scenario <-
       ICU_bed_capacity = hc$ICU_beds,
       prob_non_severe_death_treatment = pnsdt,
       dur_R = 365,
-      seeding_cases = 60
+      seeding_cases = seeding_cases
     )
-    
-    # vaccine parameters
-    ab_parameters <- get_vaccine_ab_titre_parameters(vaccine = "Pfizer", max_dose = vaccine_doses, correlated = TRUE)
     
     # combine parameters and verify
     parameters <- make_vaccine_parameters(

@@ -7,7 +7,6 @@ ggplot(data = dft, aes(x = timestep, y = deaths_t, col = factor(max_coverage))) 
   theme_bw() +
   scale_color_viridis_d()
 
-
 # TO DO: plot vaccine doses given out over time (similar to vignette) for each coverage strategy (check we are vaccinating people as we are supposed to)
 
 # TO DO: calculate proportion of population in Recovered class when vaccination commences
