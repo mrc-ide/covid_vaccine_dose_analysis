@@ -191,131 +191,84 @@ ggplot(data = saf_deaths) +
   geom_text(x = time_period, y = -1, label = R0_t0 + time_period) +
   geom_line(aes(x = x, y = y), data = R0_df) + 
   scale_y_continuous(sec.axis = sec_axis(~ ./scaling_factor, name = "R0"), name = "Deaths/day") +
-  ylab("Time (days)")
-  
-  
+  scale_x_continuous(name = "Time (days)") +
+  theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
 
 
 # --------------------------------------------------------------------------------
 # run safir-vaccination model
 # --------------------------------------------------------------------------------
 
-# create variables
-timesteps <- vaccine_parameters$time_period/dt
-variables <- create_variables(pop = pop, parameters = vaccine_parameters)
-variables <- create_vaccine_variables(variables = variables,parameters = vaccine_parameters)
+system.time(
+  saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
+    
+    # create variables
+    timesteps <- vaccine_parameters$time_period/dt
+    variables <- create_variables(pop = pop, parameters = vaccine_parameters)
+    variables <- create_vaccine_variables(variables = variables,parameters = vaccine_parameters)
+    
+    # create events
+    events <- create_events(parameters = vaccine_parameters)
+    events <- create_events_vaccination(events = events,parameters = vaccine_parameters)
+    attach_event_listeners(variables = variables,events = events,parameters = vaccine_parameters, dt = dt)
+    attach_event_listeners_vaccination(variables = variables,events = events,parameters = vaccine_parameters,dt = dt)
+    
+    # make renderers
+    renderer <- Render$new(vaccine_parameters$time_period)
 
-# create events
-events <- create_events(parameters = vaccine_parameters)
-events <- create_events_vaccination(events = events,parameters = vaccine_parameters)
-attach_event_listeners(variables = variables,events = events,parameters = vaccine_parameters, dt = dt)
-attach_event_listeners_vaccination(variables = variables,events = events,parameters = vaccine_parameters,dt = dt)
-
-# make renderers
-renderer <- Render$new(vaccine_parameters$time_period)
-dose_renderer <- Render$new(vaccine_parameters$time_period)
-
-# processes
-processes <- list(
-  vaccine_ab_titre_process(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
-  vaccination_process(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
-  infection_process_vaccine_cpp(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
-  categorical_count_renderer_process_daily(renderer = renderer,variable = variables$states,categories = variables$states$get_categories(),dt = dt),
-  integer_count_render_process_daily(renderer = dose_renderer,variable = variables$dose_num,margin = 0:vaccine_doses,dt = dt)
+    # processes
+    processes <- list(
+      vaccine_ab_titre_process(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
+      vaccination_process(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
+      infection_process_vaccine_cpp(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
+      categorical_count_renderer_process_daily(renderer = renderer,variable = variables$states,categories = variables$states$get_categories(),dt = dt)
+    )
+    
+    setup_events_vaccine(parameters = vaccine_parameters,events = events,variables = variables,dt = dt)
+    
+    simulation_loop_vaccine(
+      variables = variables,
+      events = events,
+      processes = processes,
+      timesteps = timesteps,
+      TRUE
+    )
+    
+    df <- renderer$to_dataframe()
+    df$repetition <- x
+    return(df)
+  })
 )
 
-setup_events_vaccine(parameters = vaccine_parameters,events = events,variables = variables,dt = dt)
+saf_reps <- do.call(rbind,saf_reps)
 
-system.time(simulation_loop_vaccine(
-  variables = variables,
-  events = events,
-  processes = processes,
-  timesteps = timesteps,
-  TRUE
-))
-
-saf_dt <- as.data.table(renderer$to_dataframe())
+saf_dt <- as.data.table(saf_reps)
 saf_dt[, IMild_count := IMild_count + IAsymp_count]
 saf_dt[, IAsymp_count := NULL]
-saf_dt <- melt(saf_dt,id.vars = c("timestep"),variable.name = "name")
+saf_dt <- melt(saf_dt,id.vars = c("timestep","repetition"),variable.name = "name")
+saf_dt[, model := "safir"]
 saf_dt[, name := gsub("(^)(\\w*)(_count)", "\\2", name)]
 setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment","y"))
 
-ggplot(data = saf_dt, aes(t,y,color = compartment)) +
-  geom_line() +
-  geom_line() +
+ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
+  geom_line(alpha = 0.5) +
+  geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
   facet_wrap(~compartment, scales = "free")
 
-saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = t[1:(length(t)-1)])]
+saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
+
+R0_df <- data.frame(x = c(tt_R0, time_period), y = c(R0, R0[length(R0)]))
+scaling_factor <- (60 / max(R0_df$y))
+R0_df$y <- R0_df$y * scaling_factor
 
 ggplot(data = saf_deaths) +
-  geom_line(aes(x = t, y = dy))
-
-# # --------------------------------------------------------------------------------
-# # safir (baseline squire model) in parallel
-# # --------------------------------------------------------------------------------
-# 
-# rm(list=ls());gc()
-# iso3c <- "ATG"
-# contact_mat <- squire::get_mixing_matrix(iso3c = iso3c)
-# pop <- safir:::get_population(iso3c)
-# 
-# # use as many as you want normally.
-# options("mc.cores" = 2)
-# 
-# nrep <- 10
-# # Scale it for speed
-# pop$n <- as.integer(pop$n / 5)
-# 
-# # Create our simulation parameters
-# R0 <- 2
-# time_period <- 200
-# 
-#   parameters <- safir::get_parameters(
-#   population = pop$n,
-#   contact_matrix_set = contact_mat,
-#   iso3c = iso3c,
-#   R0 = R0,
-#   time_period = time_period
-# )
-# 
-# dt <- 0.1
-# system.time(
-#   saf_reps <- mclapply(X = 1:nrep,FUN = function(x){
-#     
-#     timesteps <- parameters$time_period/dt
-#     variables <- create_variables(pop = pop, parameters = parameters)
-#     events <- create_events(parameters = parameters)
-#     attach_event_listeners(variables = variables,events = events,parameters = parameters, dt = dt)
-#     renderer <- individual::Render$new(parameters$time_period)
-#     processes <- list(
-#       infection_process_cpp(parameters = parameters,variables = variables,events = events,dt = dt),
-#       categorical_count_renderer_process_daily(renderer, variables$state, categories = variables$states$get_categories(),dt = dt)
-#     )
-#     setup_events(parameters = parameters,events = events,variables = variables,dt = dt)
-#     
-#     individual::simulation_loop(
-#       variables = variables,
-#       events = events,
-#       processes = processes,
-#       timesteps = timesteps
-#     )
-#     df <- renderer$to_dataframe()
-#     df$repetition <- x
-#     return(df)
-#   })
-# )
-# #>    user  system elapsed 
-# #>  19.580   0.644  23.966
-# 
-# saf_reps <- do.call(rbind,saf_reps)
-# 
-# # safir
-# saf_dt <- as.data.table(saf_reps)
-# saf_dt[, IMild_count := IMild_count + IAsymp_count]
-# saf_dt[, IAsymp_count := NULL]
-# saf_dt <- melt(saf_dt,id.vars = c("timestep","repetition"),variable.name = "name")
-# saf_dt[, model := "safir"]
-# saf_dt[, name := gsub("(^)(\\w*)(_count)", "\\2", name)]
-# setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment","y"))
-# saf_dt <- saf_dt[, .(ymin = quantile(y,0.025), ymax = quantile(y,0.975), y = median(y)), by = .(t,compartment,model)]
+  geom_line(aes(x = t, y = dy, group = repetition), alpha = 0.5) +
+  geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
+  geom_text(x = t1, y = -1, label = R0_t0) + 
+  geom_text(x = t2, y = -1, label = R0_t1) + 
+  geom_text(x = t3, y = -1, label = R0_t2) +
+  geom_text(x = time_period, y = -1, label = R0_t0 + time_period) +
+  geom_line(aes(x = x, y = y), data = R0_df) + 
+  scale_y_continuous(sec.axis = sec_axis(~ ./scaling_factor, name = "R0"), name = "Deaths/day") +
+  scale_x_continuous(name = "Time (days)") +
+  theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
