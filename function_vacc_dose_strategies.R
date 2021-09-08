@@ -51,7 +51,7 @@ run_scenario <-
            R0 = 2,
            Rt1 = 1.1,
            Rt2 = 2.5,
-           tt_Rt1 = 50,
+           tt_Rt1 = 30,
            tt_Rt2 = 200,
            vacc_start = 30,
            time_period = 365,
@@ -89,10 +89,15 @@ run_scenario <-
     # vaccine vector: vector of length time_period
     vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, days_to_vacc), rep(0, 240 - days_to_vacc), rep(doses_per_day, time_period - vacc_start  - 240))
 
-    # vaccine strategy
-    vaccine_coverage_mat <- strategy_matrix(strategy = "Elderly", max_coverage = max_coverage)
-    next_dose_priority <- matrix(data = 0, nrow = vaccine_doses - 1, ncol = ncol(vaccine_coverage_mat))
-    next_dose_priority[1, 15:17] <- 1 # prioritize 3 oldest age groups for next dose
+    # safir can either use a single strategy matrix for all vaccine doses or a list with a matrix for each dose,
+    # we'll use a list for this example.
+    vaccine_coverage_strategy <- list()
+    vaccine_coverage_strategy[[1]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
+    vaccine_coverage_strategy[[2]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
+    vaccine_coverage_strategy[[3]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
+    
+    next_dose_priority <- matrix(data = 0, nrow = vaccine_doses - 1,ncol = ncol(vaccine_coverage_strategy[[1]]))
+    next_dose_priority[1:nrow(next_dose_priority), 15:17] <- 1 # prioritize 3 oldest age groups for next dose
     
     # base parameters
     parameters <- safir::get_parameters(
@@ -106,7 +111,8 @@ run_scenario <-
       hosp_bed_capacity = hc$hosp_beds,
       ICU_bed_capacity = hc$ICU_beds,
       prob_non_severe_death_treatment = pnsdt,
-      dur_R = 365
+      dur_R = 365,
+      seeding_cases = 60
     )
     
     # vaccine parameters
@@ -118,7 +124,7 @@ run_scenario <-
       vaccine_ab_parameters = ab_parameters,
       vaccine_set = vaccine_set,
       dose_period = dose_period,
-      strategy_matrix = vaccine_coverage_mat,
+      strategy_matrix = vaccine_coverage_strategy,
       next_dose_priority_matrix = next_dose_priority
     )
     
@@ -198,9 +204,12 @@ run_scenario <-
                 deaths_tmin = quantile(D_count, 0.025),
                 deaths_tmax = quantile(D_count, 0.975),
                 vaccines_t = median(X1_count + X2_count + X3_count),
+                dose1_t = median(X1_count),
+                dose2_t = median(X2_count),
+                dose3_t = median(X3_count),
                 .groups = 'drop') %>%
-      nest(cols = c(timestep, deaths_t, deaths_tmin, deaths_tmax, vaccines_t)) %>%
+      nest(cols = c(timestep, deaths_t, deaths_tmin, deaths_tmax, vaccines_t, dose1_t, dose2_t, dose3_t)) %>%
       mutate(scenario = scenario)
-    
+    print(scenario)
     return(saf_reps_summarise)
   }

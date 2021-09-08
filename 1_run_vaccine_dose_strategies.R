@@ -12,14 +12,14 @@ source("function_vacc_dose_strategies.R")
 
 hs_constraints <- "Present"
 income_group <- "HIC" #c("HIC", "UMIC", "LMIC", "LIC")
-target_pop <- 50e4
+target_pop <- 50e3
 R0 <- 2
-Rt1 <- 1.05
+Rt1 <- 1.1
 Rt2 <- 3
-tt_Rt1 <- 40
+tt_Rt1 <- 30
 tt_Rt2 <- 300+180
 dt <- 1
-nrep <- 5
+nrep <- 1
 time_period <- 300+365+365
 vacc_start <- 300+60
 vaccine_doses <- c(2,3)
@@ -49,7 +49,7 @@ scenarios$scenario <- 1:nrow(scenarios)
 nrow(scenarios)
 
 #### Run the model #############################################################
-plan(multicore, workers = 2)
+plan(multicore, workers = 4)
 system.time({out <- future_pmap(scenarios, run_scenario, .progress = TRUE)})
 
 #### Format output #############################################################
