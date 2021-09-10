@@ -116,7 +116,7 @@ doses_per_day <- floor(sum(pop$n) * 0.025 / 7)
 days_to_vacc <- floor(coverage / (0.025/7) * max_coverage * 2)
 # vaccine vector: vector of length time_period
 vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, days_to_vacc), rep(0, 240 - days_to_vacc), rep(doses_per_day, time_period - vacc_start  - 240))
-vaccine_set <- vaccine_set * 0 # no vaccines for this run (baseline)
+# vaccine_set <- vaccine_set * 0 # no vaccines for this run (baseline)
 
 vaccine_coverage_strategy <- list()
 vaccine_coverage_strategy[[1]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
@@ -222,12 +222,14 @@ system.time(
     
     # make renderers
     renderer <- Render$new(vaccine_parameters$time_period)
+    dose_age_renderer <- Render$new(vaccine_parameters$time_period)
 
     # processes
     processes <- list(
       vaccine_ab_titre_process(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
       vaccination_process(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
       infection_process_vaccine_cpp(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
+      dose_age_render_process_daily(renderer = dose_age_renderer, age = variables$discrete_age, dose = variables$dose_num, parameters = vaccine_parameters, dt = dt),
       categorical_count_renderer_process_daily(renderer = renderer,variable = variables$states,categories = variables$states$get_categories(),dt = dt)
     )
     
@@ -238,18 +240,25 @@ system.time(
       events = events,
       processes = processes,
       timesteps = timesteps,
-      TRUE
+      progress = FALSE
     )
     
-    df <- renderer$to_dataframe()
-    df$repetition <- x
-    return(df)
+    df <- as.data.table(renderer$to_dataframe())
+    df[, "repetition" := x]
+    
+    df_dose_age <- as.data.table(dose_age_renderer$to_dataframe())
+    df_dose_age[, "repetition" := x]
+    
+    return(list(
+      compartments = df,
+      doses_age = df_dose_age
+    ))
   })
 )
 
-saf_reps <- do.call(rbind,saf_reps)
+# extract the trajectories of each compartment
+saf_dt <- do.call(what = rbind, args = lapply(X = saf_reps, FUN = function(x){x$compartments}))
 
-saf_dt <- as.data.table(saf_reps)
 saf_dt[, IMild_count := IMild_count + IAsymp_count]
 saf_dt[, IAsymp_count := NULL]
 saf_dt <- melt(saf_dt,id.vars = c("timestep","repetition"),variable.name = "name")
@@ -262,7 +271,28 @@ ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
   geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
   facet_wrap(~compartment, scales = "free")
 
-saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
+# extract the doses/age trajectories
+vaccine_dt <- do.call(what = rbind, args = lapply(X = saf_reps, FUN = function(x){x$doses_age}))
+vaccine_dt <- melt(data = vaccine_dt, id.vars = c("timestep", "repetition"))
+vaccine_dt[, c("dose", "age") := tstrsplit(x = variable, "_", keep = c(2,4)) ]
+vaccine_dt[, c("dose", "age") := .(as.integer(dose), as.integer(age))]
+vaccine_dt[, variable := NULL]
+
+# need to divide rows corresponding to an age group by total size of that group
+# to compare proportions
+age_dt <- data.table(size = pop$n, age = 1:17)
+
+vaccine_dt <- vaccine_dt[age_dt, on = .(age)]
+vaccine_dt[, coverage := value / size]
+vaccine_dt[, c("value", "size") := NULL]
+
+ggplot(data = vaccine_dt) +
+  geom_line(aes(x = timestep, y = coverage, color = as.factor(dose))) +
+  facet_grid(age ~ .) +
+  theme_bw()
+  
+# data.table of deaths is just difference in cumulative deaths
+saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = 1:(.N-1)), by = .(repetition)]
 
 # again, the fudge to plot R0 on the same ggplot
 R0_df <- data.frame(x = c(tt_R0, time_period), y = c(R0, R0[length(R0)]))
