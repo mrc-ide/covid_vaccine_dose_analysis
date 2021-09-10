@@ -72,7 +72,7 @@ get_vaccine_pars <- function(
   ab_50_severe = 0.03,
   std10 = 0.44,
   k = 2.94,
-  t_d2 = 84,
+  t_d2 = 28,
   t_d3 = 240,
   hl_s = 108,
   hl_l = 3650,
