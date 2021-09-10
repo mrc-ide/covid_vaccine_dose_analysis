@@ -74,7 +74,7 @@ ggplot(data = df1_vacc, aes(x = timestep, y = value/target_pop*100, col = dose))
   ggtitle("High income setting") +
   annotate(geom="text", x=500, y=50, xend=Inf, yend=Inf, label='DRAFT', color='grey', angle=45, fontface='bold', size=15, alpha=0.2, family='Arial')
 
-#ggsave("plots/Fig3_HIC_vaccinated.png", height = 8, width = 13)
+ggsave("plots/Fig3_HIC_vaccinated.png", height = 8, width = 13)
 
 # summarise for bar plot
 barplot_dat <- df %>%
