@@ -14,6 +14,11 @@ library(here)
 
 rm(list=ls());gc()
 
+
+# --------------------------------------------------------------------------------
+# interpolate Rt (piecewise linear)
+# --------------------------------------------------------------------------------
+
 # from Azra:
 #   
 #   1st wave Feb 20 - May 20 R=2.5
@@ -40,113 +45,40 @@ R0_t7 <- as.Date(x = "6/1/2021", format = "%m/%d/%Y")
 R0_t8 <- as.Date(x = "7/1/2021", format = "%m/%d/%Y")
 
 tmax_date <- as.Date(x = "12/1/2021", format = "%m/%d/%Y")
-tmax <- as.integer(difftime(tmax_date, R0_t0))
+time_period <- as.integer(difftime(tmax_date, R0_t0 - 1))
 
 dates <- c(R0_t0, R0_t1, R0_t2, R0_t3, R0_t4,R0_t5, R0_t6, R0_t7, R0_t8)
 rt <- c(2.5, 2.5, 0.9, 0.9, 1.5, 1.5, 1.0, 1.0, 3)
 
-#' @title Produce piecewise linear Rt
-#' @description Make a piecewise linear interpolating vector of Rt, for each
-#' day within the simulated interval. The assumed start of simulation
-#' is the first date provided in `dates`, and the end of simulation is the last 
-#' date of `dates` unless `max_date` is provided.
-interpolate_rt <- function(dates, rt, max_date = NULL) {
-  stopifnot(inherits(dates, "Date"))
-  stopifnot(length(dates) > 1)
-  stopifnot(all(as.integer(diff(dates)) > 0))
-  stopifnot(is.finite(rt))
-  stopifnot(all(rt > 0))
-  
-  if (!is.null(max_date)) {
-    stopifnot(inherits(max_date, "Date"))
-    stopifnot(max_date > dates[length(dates)])
-    dates <- c(dates, max_date)
-    rt <- c(rt, rt[length(rt)])
-  }
-  
-  time_interval <- vapply(X = 2:length(dates), FUN = function(d){
-    as.integer(difftime(dates[d], dates[1]))
-  }, FUN.VALUE = integer(1))
-  time_interval <- c(0, time_interval)
-  
-  total_interval <- as.integer(difftime(dates[length(dates)], dates[1]))
-  Rt_tt <- 1:total_interval
-  Rt <- rep(NaN, total_interval)
-  
-  time_interval_list <- lapply(X = seq_len(length(time_interval) - 1), FUN = function(v){
-    (time_interval[v] + 1):time_interval[v + 1]
-  })
-  
-  for (i in seq_len(length(dates) - 1)) {
-    
-    if (rt[i] == rt[i + 1]) {
-      Rt[time_interval_list[[i]]] <- rt[i]
-    } else {
-      Rt[time_interval_list[[i]]] <- approx(
-        x = c(time_interval_list[[i]][1], time_interval_list[[i]][length(time_interval_list[[i]])]), 
-        y = c(rt[i], rt[i + 1]),
-        xout = time_interval_list[[i]]
-      )$y
-    }
-    
-  }
-  
-  list(
-    Rt = Rt, Rt_tt = Rt_tt
-  )
-}
 
-rt_out <- interpolate_rt(dates = dates, rt = rt, max_date = tmax_date)
+rt_out <- safir::interpolate_rt(dates = dates, rt = rt, max_date = tmax_date)
 
+# weekly per-capita prob of external infection
+p <- 0.05
+lambda <- log(1 - p) / -7
+
+lambda_external <- rep(0, time_period)
+# lambda_external[as.integer(difftime(R0_t2, R0_t0 - 1)):as.integer(difftime(R0_t3, R0_t0 - 1))] <- lambda
+lambda_tt <- as.integer(difftime(R0_t3, R0_t0 - 1)):as.integer(difftime(R0_t4, R0_t0 - 1))
+lambda_vals <- approx(x = c(lambda_tt[1], lambda_tt[length(lambda_tt)]), y = c(0, 0.01), xout = lambda_tt)$y
+lambda_external[lambda_tt] <- lambda_vals
+
+lambda_tt <- (lambda_tt[length(lambda_tt)] + 1):time_period
+lambda_external[lambda_tt] <- 0.009
 
 # --------------------------------------------------------------------------------
 # get parameters
 # --------------------------------------------------------------------------------
 
-rm(list=ls());gc()
 source(here::here("safir_examples/utils.R"))
 
 target_pop <- 1e6
 income_group = "HIC"
 hs_constraints = "Present"
-
-# R0_t0 <- as.Date(x = "3/1/2020", format = "%m/%d/%Y")
-# R0_t1 <- as.Date(x = "5/1/2020", format = "%m/%d/%Y")
-# R0_t2 <- as.Date(x = "7/1/2021", format = "%m/%d/%Y")
-# R0 <- c(2, 1.25, 2)
-# tt_R0 <- c(0, as.integer(difftime(R0_t1, R0_t0)), as.integer(difftime(R0_t2, R0_t0)))
-# seeding_cases <- 20
-
-# the inflection points in the piecewise linear R0
-R0_t0 <- as.Date(x = "3/1/2020", format = "%m/%d/%Y")
-R0_t1 <- as.Date(x = "5/1/2020", format = "%m/%d/%Y")
-R0_t2 <- as.Date(x = "5/1/2021", format = "%m/%d/%Y")
-R0_t3 <- as.Date(x = "7/1/2021", format = "%m/%d/%Y")
-
-# slope change points in terms of numeric days
-t1 <- as.integer(difftime(R0_t1, R0_t0))
-t2 <- as.integer(difftime(R0_t2, R0_t0))
-t3 <- as.integer(difftime(R0_t3, R0_t0))
-
-# first piecewise element: initial decay
-R0_v0 <- 2.5
-R0_v1 <- 1.35
-R0_seq1 <- seq(from = 0, to = t1, by = 1)
-R0_vseq1 <- approx(x = c(0, t1), y = c(R0_v0, R0_v1), xout = R0_seq1)$y
-
-# third piecewise element: second wave
-R0_v2 <- 2
-R0_seq2 <- seq(from = t2, to = t3, by = 1)
-R0_vseq2 <- approx(x = c(t2, t3), y = c(R0_v1, R0_v2), xout = R0_seq2)$y
-
-# stick them together for get_parameters to turn into time series of beta
-tt_R0 <- c(R0_seq1, R0_seq2)
-R0 <- c(R0_vseq1, R0_vseq2)
-seeding_cases <- 20
+seeding_cases <- 10
 
 # simulation parameters
-time_period <- 365*2
-dt <- 0.2
+dt <- 0.1
 nrep <- 10 # for MC reps
 options("mc.cores" = nrep)
 
@@ -171,56 +103,57 @@ base_parameters <- safir::get_parameters(
   population = pop$n,
   contact_matrix_set = contact_mat,
   iso3c = iso3c,
-  R0 = R0,
-  tt_R0 = tt_R0,
+  R0 = rt_out$Rt,
+  tt_R0 = rt_out$Rt_tt,
   time_period = time_period,
   dt = dt,
   hosp_bed_capacity = hc$hosp_beds,
   ICU_bed_capacity = hc$ICU_beds,
   prob_non_severe_death_treatment = pnsdt,
   dur_R = 365,
-  seeding_cases = seeding_cases
+  seeding_cases = seeding_cases,
+  lambda_external = lambda_external
 )
 
 
-# --------------------------------------------------------------------------------
-# get vaccine parameters
-# --------------------------------------------------------------------------------
-
-max_coverage <- 0.8
-coverage <- 0.2
-vacc_start <- 30
-vaccine_doses <- 3
-
-vax_pars <- get_vaccine_pars()
-
-dose_period <- c(NaN, 28, 268)
-
-# doses available each day
-doses_per_day <- floor(sum(pop$n) * 0.025 / 7)
-# check how many days it takes to vaccinate to desired coverage with 2 doses
-days_to_vacc <- floor(coverage / (0.025/7) * max_coverage * 2)
-# vaccine vector: vector of length time_period
-vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, days_to_vacc), rep(0, 240 - days_to_vacc), rep(doses_per_day, time_period - vacc_start  - 240))
-# vaccine_set <- vaccine_set * 0 # no vaccines for this run (baseline)
-
-vaccine_coverage_strategy <- list()
-vaccine_coverage_strategy[[1]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
-vaccine_coverage_strategy[[2]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
-vaccine_coverage_strategy[[3]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
-
-next_dose_priority <- matrix(data = 0, nrow = vaccine_doses - 1,ncol = ncol(vaccine_coverage_strategy[[1]]))
-next_dose_priority[1:nrow(next_dose_priority), 15:17] <- 1 # prioritize 3 oldest age groups for next dose
-
-# combine base parameters from squire with ab titire parameters
-vaccine_parameters <- make_vaccine_parameters(
-  safir_parameters = base_parameters,
-  vaccine_ab_parameters = vax_pars,
-  vaccine_set = vaccine_set,
-  dose_period = dose_period,
-  strategy_matrix = vaccine_coverage_strategy,
-  next_dose_priority_matrix = next_dose_priority
-)
+# # --------------------------------------------------------------------------------
+# # get vaccine parameters
+# # --------------------------------------------------------------------------------
+# 
+# max_coverage <- 0.8
+# coverage <- 0.2
+# vacc_start <- 30
+# vaccine_doses <- 3
+# 
+# vax_pars <- get_vaccine_pars()
+# 
+# dose_period <- c(NaN, 28, 268)
+# 
+# # doses available each day
+# doses_per_day <- floor(sum(pop$n) * 0.025 / 7)
+# # check how many days it takes to vaccinate to desired coverage with 2 doses
+# days_to_vacc <- floor(coverage / (0.025/7) * max_coverage * 2)
+# # vaccine vector: vector of length time_period
+# vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, days_to_vacc), rep(0, 240 - days_to_vacc), rep(doses_per_day, time_period - vacc_start  - 240))
+# # vaccine_set <- vaccine_set * 0 # no vaccines for this run (baseline)
+# 
+# vaccine_coverage_strategy <- list()
+# vaccine_coverage_strategy[[1]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
+# vaccine_coverage_strategy[[2]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
+# vaccine_coverage_strategy[[3]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
+# 
+# next_dose_priority <- matrix(data = 0, nrow = vaccine_doses - 1,ncol = ncol(vaccine_coverage_strategy[[1]]))
+# next_dose_priority[1:nrow(next_dose_priority), 15:17] <- 1 # prioritize 3 oldest age groups for next dose
+# 
+# # combine base parameters from squire with ab titire parameters
+# vaccine_parameters <- make_vaccine_parameters(
+#   safir_parameters = base_parameters,
+#   vaccine_ab_parameters = vax_pars,
+#   vaccine_set = vaccine_set,
+#   dose_period = dose_period,
+#   strategy_matrix = vaccine_coverage_strategy,
+#   next_dose_priority_matrix = next_dose_priority
+# )
 
 # --------------------------------------------------------------------------------
 # run safir-squire; faster to calibrate with this version of the model
@@ -239,7 +172,7 @@ system.time(
       categorical_count_renderer_process_daily(renderer, variables$state, categories = variables$states$get_categories(),dt = dt)
     )
     setup_events(parameters = base_parameters,events = events,variables = variables,dt = dt)
-    
+
     individual::simulation_loop(
       variables = variables,
       events = events,
@@ -264,7 +197,7 @@ setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment"
 
 ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
   geom_line(alpha = 0.5) +
-  geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
+  # geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
   facet_wrap(~compartment, scales = "free")
 
 saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
@@ -278,11 +211,11 @@ R0_df$y <- R0_df$y * scaling_factor
 ggplot(data = saf_deaths) +
   geom_line(aes(x = t, y = dy, group = repetition), alpha = 0.5) +
   geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
-  geom_text(x = t1, y = -1, label = R0_t0) + 
-  geom_text(x = t2, y = -1, label = R0_t1) + 
+  geom_text(x = t1, y = -1, label = R0_t0) +
+  geom_text(x = t2, y = -1, label = R0_t1) +
   geom_text(x = t3, y = -1, label = R0_t2) +
   geom_text(x = time_period, y = -1, label = R0_t0 + time_period) +
-  geom_line(aes(x = x, y = y), data = R0_df) + 
+  geom_line(aes(x = x, y = y), data = R0_df) +
   scale_y_continuous(sec.axis = sec_axis(~ ./scaling_factor, name = "R0"), name = "Deaths/day") +
   scale_x_continuous(name = "Time (days)") +
   theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
@@ -354,7 +287,7 @@ setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment"
 
 ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
   geom_line(alpha = 0.5) +
-  geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
+  # geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
   facet_wrap(~compartment, scales = "free")
 
 # extract the doses/age trajectories

@@ -1,7 +1,7 @@
 #' @title Specify the country chosen to represent each income group
 #' @param income_group "HIC", "UMIC", "LMIC" or "LIC
 get_representative_country <- function(income_group){
-  case_when(income_group == "HIC" ~ "Malta",
+  dplyr::case_when(income_group == "HIC" ~ "Malta",
             income_group == "UMIC" ~ "Grenada",
             income_group == "LMIC" ~ "Nicaragua",
             income_group == "LIC" ~ "Madagascar")
@@ -82,9 +82,9 @@ get_vaccine_pars <- function(
   mu_ab_list <- data.frame(name = c("Oxford-AstraZeneca", "Pfizer", "Moderna"),
                            mu_ab_d1 = c(20/59, 20/94, ((185+273)/2)/321),
                            mu_ab_d2 = c(32/59, 223/94,  654/158)) %>%
-    mutate(mu_ab_d1 = mu_ab_d1/variant_fold_reduction,
+    dplyr::mutate(mu_ab_d1 = mu_ab_d1/variant_fold_reduction,
            mu_ab_d2 = mu_ab_d2/variant_fold_reduction) %>%
-    mutate(mu_ab_d3 = mu_ab_d2 * dose_3_fold_increase)
+    dplyr::mutate(mu_ab_d3 = mu_ab_d2 * dose_3_fold_increase)
   
   ab_parameters <- safir::get_vaccine_ab_titre_parameters(
     vaccine = vaccine, max_dose = vaccine_doses, correlated = TRUE,
