@@ -1,27 +1,23 @@
-col1 <- "#5da0b5"
-col2 <- "#c59e96"
-col3 <- "#747473"
-col4 <- "#5c8e72"
-col5 <- "#2a73bb"
+source("R/plotting_utils.R")
 
 # join the runs and link to parameters
-scenarios <- read_csv("scenarios_cluster_v4.csv")
-df <- list.files(path = "output_cluster_v4/", pattern = ".rds")
-df <- map(paste0("output_cluster_v4/", df), readRDS)
+scenarios <- read_csv("scenarios.csv", show_col_types = FALSE)
+df <- list.files(path = "output_cluster/", pattern = ".rds")
+df <- map(paste0("output_cluster/", df), readRDS)
 df <- do.call(rbind,df)
-df <- left_join(df, scenarios, by = "scenario")
+df <- left_join(df, scenarios, by = "scenario") 
 
 # summarise over repetitions
 df_summarise <- df %>%
   unnest(cols) %>%
-  group_by(income_group, target_pop, R0, Rt1, Rt2, max_coverage, coverage, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase) %>%
+  group_by(income_group, target_pop, R0, Rt1, Rt2, max_coverage, age_groups_covered, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase) %>%
 mutate(deaths_med = median(deaths),
        deaths_lower = quantile(deaths, 0.025),
        deaths_upper = quantile(deaths, 0.975),
        prop_R_med = median(prop_R)) %>%
   ungroup() %>%
   select(-c(deaths, prop_R)) %>%
-  group_by(timestep, income_group, target_pop, R0, Rt1, Rt2, max_coverage, coverage, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, deaths_med, deaths_lower, deaths_upper, prop_R_med) %>%
+  group_by(timestep, income_group, target_pop, R0, Rt1, Rt2, max_coverage, age_groups_covered, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, deaths_med, deaths_lower, deaths_upper, prop_R_med) %>%
   summarise(deaths_t = median(D_count),
             deaths_tmin = quantile(D_count, 0.025),
             deaths_tmax = quantile(D_count, 0.975),
@@ -37,45 +33,63 @@ counterfactual <- df_summarise %>%
   filter(max_coverage == 0) %>%
   select(timestep, income_group, R0, Rt1, Rt2, target_pop, deaths_t, deaths_tmin, deaths_tmax)
 
-df1 <- filter(df_summarise, max_coverage == 0.8, income_group == "HIC")
+df1 <- filter(df_summarise, max_coverage == 0.8, income_group == "HIC")%>%
+  mutate(vaccine_doses = factor(vaccine_doses, levels = c(2, 3), labels = c("2 doses", "3 doses"))) %>%
+  mutate(age_groups_covered = factor(age_groups_covered, levels = c(5,8), labels = c("60+ years", "45+ years")))
 
-# plot outputs: deaths, HIC, Wild-Type
-ggplot(data = df1, aes(x = timestep, y = deaths_t, col = as.factor(vaccine_doses))) +
+# plot outputs: deaths, HIC
+ggplot(data = df1, aes(x = timestep, y = deaths_t/target_pop * 1e6, col = as.factor(vaccine_doses))) +
+   geom_ribbon(data = filter(counterfactual, income_group == "HIC"), aes(ymin =deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6), alpha = 0.5, fill = "grey", col = NA) +
+  geom_ribbon(aes(ymin = deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = as.factor(vaccine_doses)), alpha = 0.3, col = NA) +
+  geom_line(data = filter(counterfactual, income_group == "HIC"), aes(x = timestep, y = deaths_t/target_pop * 1e6), col = "black") +
   geom_line() +
-  geom_ribbon(data = filter(counterfactual, income_group == "HIC"), aes(ymin =deaths_tmin, ymax = deaths_tmax), alpha = 0.5, fill = "grey", col = NA) +
-  geom_ribbon(aes(ymin = deaths_tmin, ymax = deaths_tmax, fill = as.factor(vaccine_doses)), alpha = 0.5, col = NA) +
-  geom_line(data = filter(counterfactual, income_group == "HIC"), aes(x = timestep, y = deaths_t), col = "black", linetype = "dashed") +
-  facet_wrap( ~ coverage, labeller = label_both) +
+  facet_wrap( ~ age_groups_covered) +
   theme_bw() +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
         axis.line = element_line(),
         legend.text.align = 0) +
-  scale_color_manual(values = c(col4, col2)) +
-  scale_fill_manual(values = c(col4, col2)) +
-  labs(x = "Timestep (days)", y = "Daily deaths", col = "Dose scenario", fill = "Dose scenario") +
-  ggtitle("High income setting, WT")
-
-#ggsave("plots/Fig1_HIC_WT_deaths.png", height = 4.5, width = 13)
-
-# plot outputs, vaccine doses
-df1_vacc <- df1 %>%
-  pivot_longer(cols = c(dose1_t, dose2_t, dose3_t), names_to = "dose")
-
-ggplot(data = df1_vacc, aes(x = timestep, y = value/target_pop*100, col = dose)) +
-  geom_line() +
-  facet_grid(as.factor(vaccine_doses) ~ coverage, labeller = label_both) +
-  theme_bw() +
-  theme(strip.background = element_rect(fill = NA),
-        panel.border = element_blank(),
-        axis.line = element_line(),
-        legend.text.align = 0) +
-  labs(x = "Timestep (days)", y = "Vaccinated (%)", col = "Dose number") +
+  scale_color_manual(values = c(col6, col8)) +
+  scale_fill_manual(values = c(col6, col8)) +
+  labs(x = "Timestep (days)", y = "Daily deaths per million", col = "Dose scenario", fill = "Dose scenario") +
   ggtitle("High income setting") +
-  annotate(geom="text", x=500, y=50, xend=Inf, yend=Inf, label='DRAFT', color='grey', angle=45, fontface='bold', size=15, alpha=0.2, family='Arial')
+  annotate(geom="text", x=500, y=60, xend=Inf, yend=Inf, label='DRAFT', color='grey', angle=45, fontface='bold', size=15, alpha=0.2, family='Arial')
 
-ggsave("plots/Fig3_HIC_vaccinated.png", height = 8, width = 13)
+ggsave("plots/Fig1_HIC_WT_deaths.png", height = 4.5, width = 13)
 
+
+######################################################################
+counterfactual <- df_summarise %>%
+  filter(max_coverage == 0) %>%
+  select(timestep, income_group, R0, Rt1, Rt2, target_pop, deaths_t, deaths_tmin, deaths_tmax) %>%
+  mutate(vaccine_doses = factor(vaccine_doses, levels = c(2, 3), labels = c("2 doses", "3 doses")))
+
+df2 <- filter(df_summarise, max_coverage == 0.8, income_group == "LMIC")%>%
+  mutate(vaccine_doses = factor(vaccine_doses, levels = c(2, 3), labels = c("2 doses", "3 doses"))) %>%
+  mutate(age_groups_covered = factor(age_groups_covered, levels = c(5,8), labels = c("60+ years", "45+ years")))# %>%
+  #filter(age_groups_covered == "45+ years")
+
+# plot outputs: deaths, LMIC
+ggplot(data = df2, aes(x = timestep, y = deaths_t/target_pop * 1e6, col = as.factor(vaccine_doses))) +
+  geom_ribbon(data = filter(counterfactual, income_group == "LMIC"), aes(ymin =deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6), alpha = 0.5, fill = "grey", col = NA) +
+  geom_ribbon(aes(ymin = deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = as.factor(vaccine_doses)), alpha = 0.3, col = NA) +
+  geom_line(data = filter(counterfactual, income_group == "LMIC"), aes(x = timestep, y = deaths_t/target_pop * 1e6), col = "black") +
+  geom_line() +
+  facet_wrap( ~ age_groups_covered) +
+  theme_bw() +
+  theme(strip.background = element_rect(fill = NA),
+        panel.border = element_blank(),
+        axis.line = element_line(),
+        legend.text.align = 0) +
+  scale_color_manual(values = c(col6, col8)) +
+  scale_fill_manual(values = c(col6, col8)) +
+  labs(x = "Timestep (days)", y = "Daily deaths per million", col = "Dose scenario", fill = "Dose scenario") +
+  ggtitle("Lower-middle income setting") +
+  annotate(geom="text", x=500, y=100, xend=Inf, yend=Inf, label='DRAFT', color='grey', angle=45, fontface='bold', size=15, alpha=0.2, family='Arial')
+
+ggsave("plots/Fig1_LMIC_WT_deaths.png", height = 4.5, width = 8)
+
+##############################################################################
 # summarise for bar plot
 barplot_dat <- df %>%
   group_by(income_group, target_pop, hs_constraints, R0, Rt1, Rt2, vaccine_doses, max_coverage, coverage, vacc_start, variant_fold_reduction, dose_3_fold_increase) %>%

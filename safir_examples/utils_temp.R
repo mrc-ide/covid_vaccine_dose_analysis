@@ -1,7 +1,9 @@
+# temporary version of vaccine parameters for meeting on 13 Sept
+
 #' @title Specify the country chosen to represent each income group
 #' @param income_group "HIC", "UMIC", "LMIC" or "LIC
 get_representative_country <- function(income_group){
-  dplyr::case_when(income_group == "HIC" ~ "Malta",
+  case_when(income_group == "HIC" ~ "Malta",
             income_group == "UMIC" ~ "Grenada",
             income_group == "LMIC" ~ "Nicaragua",
             income_group == "LIC" ~ "Madagascar")
@@ -66,8 +68,8 @@ get_prob_non_severe_death_treatment <- function(income_group, hs_constraints){
 get_vaccine_pars <- function(
   vaccine = "Pfizer",
   vaccine_doses = 3,
-  variant_fold_reduction = 1,
-  dose_3_fold_increase = 4,
+  variant_fold_reduction = 4,
+  dose_3_fold_increase = 6,
   ab_50 = 0.2,
   ab_50_severe = 0.03,
   std10 = 0.44,
@@ -80,11 +82,11 @@ get_vaccine_pars <- function(
   t_period_l = 365
 ){
   mu_ab_list <- data.frame(name = c("Oxford-AstraZeneca", "Pfizer", "Moderna"),
-                           mu_ab_d1 = c(0.12, 0.12, ((185+273)/2)/321),
-                           mu_ab_d2 = c(0.41, 1.04,  654/158)) %>%
+                           mu_ab_d1 = c(0.12*4, 0.12*4, ((185+273)/2)/321),
+                           mu_ab_d2 = c(0.41*4, 1.04*4,  654/158)) %>%
     mutate(mu_ab_d1 = mu_ab_d1/variant_fold_reduction,
            mu_ab_d2 = mu_ab_d2/variant_fold_reduction) %>%
-    dplyr::mutate(mu_ab_d3 = mu_ab_d2 * dose_3_fold_increase)
+    mutate(mu_ab_d3 = mu_ab_d2 * dose_3_fold_increase)
   
   ab_parameters <- safir::get_vaccine_ab_titre_parameters(
     vaccine = vaccine, max_dose = vaccine_doses, correlated = TRUE,

@@ -7,27 +7,29 @@ library(parallel)
 library(tidyverse)
 library(countrycode)
 library(furrr)
+library(zoo)
 
-source("safir_examples/utils.R")
-source("function_vacc_dose_strategies.R")
+source("R/utils.R")
+source("R/run_function.R")
 
-hs_constraints <- "Present"
 income_group <- c("HIC", "LMIC") #c("HIC", "UMIC", "LMIC", "LIC")
-target_pop <- 1.3e4
-R0 <- 2.5
-Rt1 <- 1.4
+target_pop <- 1e6
+hs_constraints <- "Present"
+R0 <- 2
+Rt1 <- 1.2
 Rt2 <- 3
 tt_Rt1 <- 60
+tt_Rt1_stop <- 300+90
 tt_Rt2 <- 300+180
-dt <- 0.2
-repetition <- 1:2
-time_period <- 300+365+365
+dt <- 1
+repetition <- 1:20
+time_period <- 300+365+365+180
 vacc_start <- 300+60
 vaccine_doses <- c(2,3)
 max_coverage <- 0.8
-coverage <- c(0.2, 0.3, 0.4)
+age_groups_covered <- c(5,9)
 seeding_cases <- 20
-variant_fold_reduction <- 4#c(1, 4)
+variant_fold_reduction <- 1
 
 #### Create scenarios ##########################################################
 
@@ -39,10 +41,11 @@ scenarios <- expand_grid(income_group = income_group,
                          Rt2 = Rt2,
                          tt_Rt1 = tt_Rt1,
                          tt_Rt2 = tt_Rt2,
+                         tt_Rt1_stop = tt_Rt1_stop,
                          time_period = time_period,
                          vaccine_doses = vaccine_doses,
                          max_coverage = max_coverage,
-                         coverage = coverage,
+                         age_groups_covered = age_groups_covered,
                          vacc_start = vacc_start,
                          dt = dt,
                          repetition = repetition,
@@ -53,7 +56,7 @@ scenarios <- expand_grid(income_group = income_group,
 
 vaccine_doses <- 2
 max_coverage <- 0
-coverage <- 0.2
+age_groups_covered <- 1
 variant_fold_reduction <- 1
 
 scenarios_counter <- expand_grid(income_group = income_group,
@@ -64,10 +67,11 @@ scenarios_counter <- expand_grid(income_group = income_group,
                          Rt2 = Rt2,
                          tt_Rt1 = tt_Rt1,
                          tt_Rt2 = tt_Rt2,
+                         tt_Rt1_stop = tt_Rt1_stop,
                          time_period = time_period,
                          vaccine_doses = vaccine_doses,
                          max_coverage = max_coverage,
-                         coverage = coverage,
+                         age_groups_covered = age_groups_covered,
                          vacc_start = vacc_start,
                          dt = dt,
                          repetition = repetition,
@@ -82,28 +86,21 @@ scenarios$scenario <- 1:nrow(scenarios)
 
 nrow(scenarios)
 
-write.csv(scenarios, "scenarios_cluster_v4.csv")
+write_csv(scenarios, "scenarios.csv")
 
 #### Run the model #############################################################
 plan(multicore, workers = 4)
 system.time({out <- future_pmap(scenarios, run_scenario, .progress = TRUE)})
 
-#### Format output #############################################################
-out_format <- left_join(scenarios, do.call(rbind,out), by = "scenario")
-
-### Save output ################################################################
-saveRDS(out_format, "output/1_vaccine_dose_strategies.rds")
-################################################################################
-
 #### OR Run the model on cluster ###############################################
 #################################################################################
 # to run on cluster instead
 # Load functions
-sources <- c("function_vacc_dose_strategies_cluster.R", "safir_examples/utils.R")
+sources <- c("R/run_function.R", "R/utils.R")
 src <- conan::conan_sources(c("mrc-ide/safir", "mrc-ide/squire", "mrc-ide/nimue"))
 ctx <- context::context_save("context",
                              sources = sources,
-                             packages = c("tibble", "dplyr", "tidyr", "countrycode", "individual", "safir", "nimue", "squire"),
+                             packages = c("tibble", "dplyr", "tidyr", "countrycode", "safir", "nimue", "squire"),
                              package_sources = src)
 
 config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--didemrchnb")
