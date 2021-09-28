@@ -37,3 +37,9 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# other folders
+/context
+/output/
+/output_cluster/
+output_cluster_v7/

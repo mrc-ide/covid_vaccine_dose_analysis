@@ -1,6 +1,6 @@
 # main running function
 run_scenario <- 
-  function(scenario = NA,
+  function(scenario = 1,
            target_pop = 50e5,
            income_group = "HIC",
            hs_constraints = "Present",
@@ -8,15 +8,16 @@ run_scenario <-
            Rt1 = 1.1,
            Rt2 = 2.5,
            tt_Rt1 = 30,
+           tt_Rt1_stop = 365,
            tt_Rt2 = 200,
            vacc_start = 30,
            time_period = 365,
            vaccine_doses = 2,
            max_coverage = 0.8,
-           coverage = 0.2,
+           age_groups_covered = 4,
            dt = 1,
            repetition = 1,
-           seeding_cases = seeding_cases,
+           seeding_cases = 20,
            variant_fold_reduction = 1,
            dose_3_fold_increase = 1){
     
@@ -69,7 +70,8 @@ run_scenario <-
       ICU_bed_capacity = hc$ICU_beds,
       prob_non_severe_death_treatment = pnsdt,
       dur_R = 365,
-      seeding_cases = seeding_cases
+      seeding_cases = seeding_cases,
+      lambda_external = rep(0.00001, time_period)
     )
     
     # VACCINE PARAMETERS
@@ -83,27 +85,42 @@ run_scenario <-
     if (vaccine_doses == 3) {dose_period <- c(NaN, 28, 268)}
     
     # doses available each day
-    doses_per_day <- floor(sum(pop$n) * 0.025 / 7)
-    # check how many days it takes to vaccinate to desired coverage with 2 doses
-    days_to_vacc <- floor(coverage / (0.025/7) * max_coverage * 2) + 28
+    doses_per_day <- floor(sum(pop$n) * 0.02 / 7)
+    # check how many days it takes to vaccinate desired age groups with 2 doses
+    coverage <- sum(pop$n[(17 - age_groups_covered + 1):17])/sum(pop$n)
+    days_to_vacc <- floor(coverage / (0.02/7) * max_coverage * 2)
+    days_to_boost <- floor(days_to_vacc/2)
     # vaccine vector: vector of length time_period
-    vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, days_to_vacc), rep(0, 240 - days_to_vacc), rep(doses_per_day, time_period - vacc_start  - 240))
-
+    vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, days_to_vacc), rep(0, 268 - days_to_vacc), rep(doses_per_day, days_to_boost), rep(0, time_period - vacc_start - 268 - days_to_boost))
+    #vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, time_period - vacc_start))
+    
     # safir can either use a single strategy matrix for all vaccine doses or a list with a matrix for each dose,
     # we'll use a list for this example.
     vaccine_coverage_strategy <- list()
     vaccine_coverage_strategy[[1]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
     vaccine_coverage_strategy[[2]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
-    if (vaccine_doses == 3) {
-    vaccine_coverage_strategy[[3]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)}
-    
-    next_dose_priority <- matrix(data = 1, nrow = vaccine_doses - 1, ncol = ncol(vaccine_coverage_strategy[[1]]))
     
     if (vaccine_doses == 3) {
-      next_dose_priority <- matrix(data = 0, nrow = vaccine_doses - 1,ncol = ncol(vaccine_coverage_strategy[[1]]))
-      next_dose_priority[1:nrow(next_dose_priority), 14:17] <- 1 # prioritize 3 oldest age groups for next dose
+      vaccine_coverage_strategy[[1]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)[1:age_groups_covered,]
+      vaccine_coverage_strategy[[2]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)[1:age_groups_covered,]
+      vaccine_coverage_strategy[[3]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)[1:age_groups_covered,]}
+    
+    if (vaccine_doses == 2) {
+      next_dose_priority <- matrix(data = 1, nrow = vaccine_doses - 1, ncol = ncol(vaccine_coverage_strategy[[1]]))
+    } else if (vaccine_doses == 3) {
+      next_dose_priority <- matrix(data = 0, nrow = vaccine_doses - 1, ncol = ncol(vaccine_coverage_strategy[[1]]))
+      next_dose_priority[,(17 - age_groups_covered + 1):17] <- 1
+      
     }
     
+    
+    
+    # if (vaccine_doses == 3) {
+    #   next_dose_priority <- matrix(data = 1, nrow = vaccine_doses - 1,ncol = ncol(vaccine_coverage_strategy[[1]]))
+    #   next_dose_priority[1:nrow(next_dose_priority), 14:17] <- 1 # prioritize 3 oldest age groups for next dose
+    # }
+    
+
     # combine parameters and verify
     parameters <- make_vaccine_parameters(
       safir_parameters = parameters,
@@ -163,15 +180,17 @@ run_scenario <-
       mutate(IMild_count = IMild_count + IAsymp_count) %>%
       select(-IAsymp_count) %>%
       pivot_longer(cols = contains("count"), names_to = "compartment") %>%
-      filter(compartment %in% c("D_count", "X1_count", "X2_count", "X3_count", "R_count")) %>%
+      filter(compartment %in% c("D_count", "X1_count", "X2_count", "X3_count", "R_count", "IMild_count", "ICase_count")) %>%
       group_by(compartment) %>%
       mutate(value = if_else(compartment == "D_count", value - lag(value), value),
              value = if_else(is.na(value), 0, value)) %>%
       ungroup() %>%
       pivot_wider(id_cols = timestep, names_from = "compartment", values_from = "value")  %>%
-      mutate(deaths = sum(D_count)) %>%
+      mutate(deaths = sum(D_count),
+             doses = X1_count + X2_count * 2 + X3_count * 3,
+             total_doses = max(doses)) %>%
       ungroup() %>%
-      nest(cols = c(timestep, D_count, X1_count, X2_count, X3_count, R_count)) %>%
+      nest(cols = c(timestep, D_count, X1_count, X2_count, X3_count, R_count, IMild_count, ICase_count, doses)) %>%
       mutate(scenario = scenario)
     
     # get prop in Recovered when vaccination starts
@@ -182,10 +201,10 @@ run_scenario <-
       select(prop_R) %>%
       mutate(scenario = scenario)
     
-    saf_reps_summarise <- left_join(saf_reps_summarise, prop_R)
+    saf_reps_summarise <- left_join(saf_reps_summarise, prop_R, by = "scenario")
     
     # Save output
-    output_address <- paste0("output_cluster_v4/scenario_", scenario, ".rds")
+    output_address <- paste0("output_cluster/scenario_", scenario, ".rds")
     saveRDS(saf_reps_summarise, output_address)
 
   }
