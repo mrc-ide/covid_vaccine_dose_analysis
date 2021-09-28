@@ -116,7 +116,7 @@ doses_per_day <- floor(sum(pop$n) * 0.025 / 7)
 days_to_vacc <- floor(coverage / (0.025/7) * max_coverage * 2)
 # vaccine vector: vector of length time_period
 vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, days_to_vacc), rep(0, 240 - days_to_vacc), rep(doses_per_day, time_period - vacc_start  - 240))
-# vaccine_set <- vaccine_set * 0 # no vaccines for this run (baseline)
+vaccine_set <- vaccine_set * 0 # no vaccines for this run (baseline)
 
 vaccine_coverage_strategy <- list()
 vaccine_coverage_strategy[[1]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
