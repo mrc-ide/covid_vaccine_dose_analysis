@@ -49,44 +49,31 @@ time_period <- as.integer(difftime(tmax_date, R0_t0 - 1))
 
 dates <- c(R0_t0, R0_t1, R0_t2, R0_t3, R0_t4, R0_t5, R0_t6, R0_t7, R0_t8)
 rt <-    c(2.5,   2.5,   0.9,   0.9,   1.5,   1.5,   1.0,   1.0,   3)
-
 rt_out <- safir::interpolate_rt(dates = dates, rt = rt, max_date = tmax_date)
 
-
-
-# # weekly per-capita prob of external infection
+# daily per-capita prob of external infection
 lambda_external <- rep(0, time_period)
 
-# # increase external FoI from R0_t2 to R0_t4
-# lambda_tt <- as.integer(difftime(R0_t2, R0_t0 - 1)):as.integer(difftime(R0_t4, R0_t0 - 1))
-# lambda_vals <- approx(x = c(lambda_tt[1], lambda_tt[length(lambda_tt)]), y = c(0, 0.01), xout = lambda_tt)$y
-# lambda_external[lambda_tt] <- lambda_vals
-# 
-# lambda_tt <- as.integer(difftime(R0_t4, R0_t0 - 1)):as.integer(difftime(R0_t5, R0_t0 - 1))
-# lambda_external[lambda_tt] <- 0.05
-
-
-# lambda_tt <- as.integer(difftime(R0_t3, R0_t0 - 1)):as.integer(difftime(R0_t5, R0_t0 - 1))
-# lambda_vals <- approx(x = c(lambda_tt[1], lambda_tt[length(lambda_tt)]), y = c(0, 0.01), xout = lambda_tt)$y
-# lambda_external[lambda_tt] <- lambda_vals
-# lambda_external[(lambda_tt[length(lambda_tt)]+1):length(lambda_external)] <- 0.01
-
+# first pulse, spread out hazard of 0.05 over 10 days right before 2nd wave
 t_spread <- 10
 lambda_tt <- as.integer(difftime(R0_t3, R0_t0 - 1))
 lambda_tt <- seq(from = lambda_tt - t_spread/2, to = lambda_tt + t_spread/2, by = 1)
 lambda_external[lambda_tt] <- dnorm(x = lambda_tt, mean = lambda_tt[t_spread/2+1], sd = 3)
 lambda_external[lambda_tt] <- lambda_external[lambda_tt] / sum(lambda_external[lambda_tt]) * 0.05
 
+# second pulse, spread out hazard of 0.01 over 20 days right before 2nd wave
 t_spread <- 20
 lambda_tt <- as.integer(difftime(R0_t7, R0_t0 - 1))
 lambda_tt <- seq(from = lambda_tt - t_spread/2, to = lambda_tt + t_spread/2, by = 1)
 lambda_external[lambda_tt] <- dnorm(x = lambda_tt, mean = lambda_tt[t_spread/2+1], sd = 3)
 lambda_external[lambda_tt] <- lambda_external[lambda_tt] / sum(lambda_external[lambda_tt]) * 0.01
 
+# plot Rt and pulsed external FoI
 par(mfrow=c(2,1))
 plot(x = rt_out$Rt_tt, y = rt_out$Rt, type = "l", ylim = c(0, 3))
 plot(x = seq_along(lambda_external), y = lambda_external, type = "l")
 par(mfrow=c(1,1))
+
 
 # --------------------------------------------------------------------------------
 # get parameters
@@ -101,8 +88,6 @@ seeding_cases <- 10
 
 # simulation parameters
 dt <- 0.2
-# nrep <- 10 # for MC reps
-# options("mc.cores" = nrep)
 
 # get country and standardize population
 rep_country <- get_representative_country(income_group = income_group)
@@ -138,52 +123,50 @@ base_parameters <- safir::get_parameters(
 )
 
 
-# # --------------------------------------------------------------------------------
-# # get vaccine parameters
-# # --------------------------------------------------------------------------------
-# 
-# max_coverage <- 0.8
-# coverage <- 0.2
-# vacc_start <- 30
-# vaccine_doses <- 3
-# 
-# vax_pars <- get_vaccine_pars()
-# 
-# dose_period <- c(NaN, 28, 268)
-# 
-# # doses available each day
-# doses_per_day <- floor(sum(pop$n) * 0.025 / 7)
-# # check how many days it takes to vaccinate to desired coverage with 2 doses
-# days_to_vacc <- floor(coverage / (0.025/7) * max_coverage * 2)
-# # vaccine vector: vector of length time_period
-# vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, days_to_vacc), rep(0, 240 - days_to_vacc), rep(doses_per_day, time_period - vacc_start  - 240))
-# # vaccine_set <- vaccine_set * 0 # no vaccines for this run (baseline)
-# 
-# vaccine_coverage_strategy <- list()
-# vaccine_coverage_strategy[[1]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
-# vaccine_coverage_strategy[[2]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
-# vaccine_coverage_strategy[[3]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
-# 
-# next_dose_priority <- matrix(data = 0, nrow = vaccine_doses - 1,ncol = ncol(vaccine_coverage_strategy[[1]]))
-# next_dose_priority[1:nrow(next_dose_priority), 15:17] <- 1 # prioritize 3 oldest age groups for next dose
-# 
-# # combine base parameters from squire with ab titire parameters
-# vaccine_parameters <- make_vaccine_parameters(
-#   safir_parameters = base_parameters,
-#   vaccine_ab_parameters = vax_pars,
-#   vaccine_set = vaccine_set,
-#   dose_period = dose_period,
-#   strategy_matrix = vaccine_coverage_strategy,
-#   next_dose_priority_matrix = next_dose_priority
-# )
+# --------------------------------------------------------------------------------
+# get vaccine parameters
+# --------------------------------------------------------------------------------
+
+max_coverage <- 0.8
+coverage <- 0.2
+vacc_start <- 30
+vaccine_doses <- 3
+
+vax_pars <- get_vaccine_pars()
+
+dose_period <- c(NaN, 28, 268)
+
+# doses available each day
+doses_per_day <- floor(sum(pop$n) * 0.025 / 7)
+# check how many days it takes to vaccinate to desired coverage with 2 doses
+days_to_vacc <- floor(coverage / (0.025/7) * max_coverage * 2)
+# vaccine vector: vector of length time_period
+vaccine_set <- c(rep(0, vacc_start), rep(doses_per_day, days_to_vacc), rep(0, 240 - days_to_vacc), rep(doses_per_day, time_period - vacc_start  - 240))
+vaccine_set <- vaccine_set * 0 # no vaccines for this run (baseline)
+
+vaccine_coverage_strategy <- list()
+vaccine_coverage_strategy[[1]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
+vaccine_coverage_strategy[[2]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
+vaccine_coverage_strategy[[3]] <- nimue::strategy_matrix(strategy = "Elderly",max_coverage = max_coverage)
+
+next_dose_priority <- matrix(data = 0, nrow = vaccine_doses - 1,ncol = ncol(vaccine_coverage_strategy[[1]]))
+next_dose_priority[1:nrow(next_dose_priority), 15:17] <- 1 # prioritize 3 oldest age groups for next dose
+
+# combine base parameters from squire with ab titire parameters
+vaccine_parameters <- make_vaccine_parameters(
+  safir_parameters = base_parameters,
+  vaccine_ab_parameters = vax_pars,
+  vaccine_set = vaccine_set,
+  dose_period = dose_period,
+  strategy_matrix = vaccine_coverage_strategy,
+  next_dose_priority_matrix = next_dose_priority
+)
 
 # --------------------------------------------------------------------------------
 # run safir-squire; faster to calibrate with this version of the model
 # --------------------------------------------------------------------------------
 
-
-
-
+# run one trajectory
 timesteps <- base_parameters$time_period/dt
 variables <- create_variables(pop = pop, parameters = base_parameters)
 events <- create_events(parameters = base_parameters)
@@ -226,71 +209,70 @@ ggplot(data = saf_deaths) +
   theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
 
 
-# system.time(
-#   saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
-# 
-#     timesteps <- base_parameters$time_period/dt
-#     variables <- create_variables(pop = pop, parameters = base_parameters)
-#     events <- create_events(parameters = base_parameters)
-#     attach_event_listeners(variables = variables,events = events,parameters = base_parameters, dt = dt)
-#     renderer <- individual::Render$new(base_parameters$time_period)
-#     processes <- list(
-#       infection_process_cpp(parameters = base_parameters,variables = variables,events = events,dt = dt),
-#       categorical_count_renderer_process_daily(renderer, variables$state, categories = variables$states$get_categories(),dt = dt)
-#     )
-#     setup_events(parameters = base_parameters,events = events,variables = variables,dt = dt)
-# 
-#     individual::simulation_loop(
-#       variables = variables,
-#       events = events,
-#       processes = processes,
-#       timesteps = timesteps
-#     )
-#     df <- renderer$to_dataframe()
-#     df$repetition <- x
-#     return(df)
-#   })
-# )
-# 
-# saf_reps <- do.call(rbind,saf_reps)
-# 
-# saf_dt <- as.data.table(saf_reps)
-# saf_dt[, IMild_count := IMild_count + IAsymp_count]
-# saf_dt[, IAsymp_count := NULL]
-# saf_dt <- melt(saf_dt,id.vars = c("timestep","repetition"),variable.name = "name")
-# saf_dt[, model := "safir"]
-# saf_dt[, name := gsub("(^)(\\w*)(_count)", "\\2", name)]
-# setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment","y"))
-# 
-# ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
-#   geom_line(alpha = 0.5) +
-#   # geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
-#   facet_wrap(~compartment, scales = "free")
-# 
-# saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
-# 
-# # a bit of a fudge to plot R0 on top of the deaths...scale it to that
-# # max R0 is roughly in the middle of the y-axis (about 60 deaths/day)
-# R0_df <- data.frame(x = c(tt_R0, time_period), y = c(R0, R0[length(R0)]))
-# scaling_factor <- (60 / max(R0_df$y))
-# R0_df$y <- R0_df$y * scaling_factor
-# 
-# ggplot(data = saf_deaths) +
-#   geom_line(aes(x = t, y = dy, group = repetition), alpha = 0.5) +
-#   geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
-#   geom_text(x = t1, y = -1, label = R0_t0) +
-#   geom_text(x = t2, y = -1, label = R0_t1) +
-#   geom_text(x = t3, y = -1, label = R0_t2) +
-#   geom_text(x = time_period, y = -1, label = R0_t0 + time_period) +
-#   geom_line(aes(x = x, y = y), data = R0_df) +
-#   scale_y_continuous(sec.axis = sec_axis(~ ./scaling_factor, name = "R0"), name = "Deaths/day") +
-#   scale_x_continuous(name = "Time (days)") +
-#   theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
+# run it in parallel to test most trajectories look "normal"
+nrep <- 10 # for MC reps
+options("mc.cores" = nrep)
+
+system.time(
+  saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
+
+    timesteps <- base_parameters$time_period/dt
+    variables <- create_variables(pop = pop, parameters = base_parameters)
+    events <- create_events(parameters = base_parameters)
+    attach_event_listeners(variables = variables,events = events,parameters = base_parameters, dt = dt)
+    renderer <- individual::Render$new(base_parameters$time_period)
+    processes <- list(
+      infection_process_cpp(parameters = base_parameters,variables = variables,events = events,dt = dt),
+      categorical_count_renderer_process_daily(renderer, variables$state, categories = variables$states$get_categories(),dt = dt)
+    )
+    setup_events(parameters = base_parameters,events = events,variables = variables,dt = dt)
+
+    individual::simulation_loop(
+      variables = variables,
+      events = events,
+      processes = processes,
+      timesteps = timesteps
+    )
+    df <- renderer$to_dataframe()
+    df$repetition <- x
+    return(df)
+  })
+)
+
+saf_reps <- do.call(rbind,saf_reps)
+
+saf_dt <- as.data.table(saf_reps)
+saf_dt[, IMild_count := IMild_count + IAsymp_count]
+saf_dt[, IAsymp_count := NULL]
+saf_dt <- melt(saf_dt,id.vars = c("timestep","repetition"),variable.name = "name")
+saf_dt[, model := "safir"]
+saf_dt[, name := gsub("(^)(\\w*)(_count)", "\\2", name)]
+setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment","y"))
+
+ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
+  geom_line(alpha = 0.5) +
+  facet_wrap(~compartment, scales = "free")
+
+saf_deaths <- as.data.table(saf_reps)
+saf_deaths <- saf_deaths[, c("timestep", "D_count", "repetition")]
+setnames(saf_deaths, c("D_count", "timestep"), c("D", "t"))
+saf_deaths <- saf_deaths[,  .(dy = diff(D), t = t[1:(length(t)-1)]), by = .(repetition)]
+saf_deaths[, "date" := R0_t0 + (t - 1)]
+
+ggplot(data = saf_deaths) +
+  geom_line(aes(x = date, y = dy, group = repetition), alpha = 0.5) +
+  scale_x_date(name = "Date", date_labels = "%b %Y", breaks = dates) +
+  ylab("Deaths/day") +
+  theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
 
 
 # --------------------------------------------------------------------------------
 # run safir-vaccination model, but not distributing any vaccines
 # --------------------------------------------------------------------------------
+
+# run it in parallel to test most trajectories look "normal"
+nrep <- 10 # for MC reps
+options("mc.cores" = nrep)
 
 system.time(
   saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
@@ -348,14 +330,24 @@ saf_dt <- do.call(what = rbind, args = lapply(X = saf_reps, FUN = function(x){x$
 saf_dt[, IMild_count := IMild_count + IAsymp_count]
 saf_dt[, IAsymp_count := NULL]
 saf_dt <- melt(saf_dt,id.vars = c("timestep","repetition"),variable.name = "name")
-saf_dt[, model := "safir"]
 saf_dt[, name := gsub("(^)(\\w*)(_count)", "\\2", name)]
 setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment","y"))
 
 ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
   geom_line(alpha = 0.5) +
-  # geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
   facet_wrap(~compartment, scales = "free")
+
+# plot deaths
+saf_deaths <- saf_dt[compartment == "D", ]
+saf_deaths[, compartment := NULL]
+saf_deaths <- saf_deaths[,  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
+saf_deaths[, "date" := R0_t0 + (t - 1)]
+
+ggplot(data = saf_deaths) +
+  geom_line(aes(x = date, y = dy, group = repetition), alpha = 0.5) +
+  scale_x_date(name = "Date", date_labels = "%b %Y", breaks = dates) +
+  ylab("Deaths/day") +
+  theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
 
 # extract the doses/age trajectories
 vaccine_dt <- do.call(what = rbind, args = lapply(X = saf_reps, FUN = function(x){x$doses_age}))
@@ -376,23 +368,3 @@ ggplot(data = vaccine_dt) +
   geom_line(aes(x = timestep, y = coverage, color = as.factor(dose))) +
   facet_grid(age ~ .) +
   theme_bw()
-  
-# data.table of deaths is just difference in cumulative deaths
-saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = 1:(.N-1)), by = .(repetition)]
-
-# again, the fudge to plot R0 on the same ggplot
-R0_df <- data.frame(x = c(tt_R0, time_period), y = c(R0, R0[length(R0)]))
-scaling_factor <- (60 / max(R0_df$y))
-R0_df$y <- R0_df$y * scaling_factor
-
-ggplot(data = saf_deaths) +
-  geom_line(aes(x = t, y = dy, group = repetition), alpha = 0.5) +
-  geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
-  geom_text(x = t1, y = -1, label = R0_t0) + 
-  geom_text(x = t2, y = -1, label = R0_t1) + 
-  geom_text(x = t3, y = -1, label = R0_t2) +
-  geom_text(x = time_period, y = -1, label = R0_t0 + time_period) +
-  geom_line(aes(x = x, y = y), data = R0_df) + 
-  scale_y_continuous(sec.axis = sec_axis(~ ./scaling_factor, name = "R0"), name = "Deaths/day") +
-  scale_x_continuous(name = "Time (days)") +
-  theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
