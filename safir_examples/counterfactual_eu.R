@@ -35,7 +35,7 @@ rm(list=ls());gc()
 
 # piecewise segments
 R0_t0 <- as.Date(x = "2/1/2020", format = "%m/%d/%Y")
-R0_t1 <- as.Date(x = "5/1/2020", format = "%m/%d/%Y")
+R0_t1 <- as.Date(x = "3/1/2020", format = "%m/%d/%Y")
 R0_t2 <- as.Date(x = "6/1/2020", format = "%m/%d/%Y")
 R0_t3 <- as.Date(x = "9/1/2020", format = "%m/%d/%Y")
 R0_t4 <- as.Date(x = "10/1/2020", format = "%m/%d/%Y")
@@ -47,24 +47,46 @@ R0_t8 <- as.Date(x = "7/1/2021", format = "%m/%d/%Y")
 tmax_date <- as.Date(x = "12/1/2021", format = "%m/%d/%Y")
 time_period <- as.integer(difftime(tmax_date, R0_t0 - 1))
 
-dates <- c(R0_t0, R0_t1, R0_t2, R0_t3, R0_t4,R0_t5, R0_t6, R0_t7, R0_t8)
-rt <- c(2.5, 2.5, 0.9, 0.9, 1.5, 1.5, 1.0, 1.0, 3)
-
+dates <- c(R0_t0, R0_t1, R0_t2, R0_t3, R0_t4, R0_t5, R0_t6, R0_t7, R0_t8)
+rt <-    c(2.5,   2.5,   0.9,   0.9,   1.5,   1.5,   1.0,   1.0,   3)
 
 rt_out <- safir::interpolate_rt(dates = dates, rt = rt, max_date = tmax_date)
 
-# weekly per-capita prob of external infection
-p <- 0.05
-lambda <- log(1 - p) / -7
 
+
+# # weekly per-capita prob of external infection
 lambda_external <- rep(0, time_period)
-# lambda_external[as.integer(difftime(R0_t2, R0_t0 - 1)):as.integer(difftime(R0_t3, R0_t0 - 1))] <- lambda
-lambda_tt <- as.integer(difftime(R0_t3, R0_t0 - 1)):as.integer(difftime(R0_t4, R0_t0 - 1))
-lambda_vals <- approx(x = c(lambda_tt[1], lambda_tt[length(lambda_tt)]), y = c(0, 0.01), xout = lambda_tt)$y
-lambda_external[lambda_tt] <- lambda_vals
 
-lambda_tt <- (lambda_tt[length(lambda_tt)] + 1):time_period
-lambda_external[lambda_tt] <- 0.009
+# # increase external FoI from R0_t2 to R0_t4
+# lambda_tt <- as.integer(difftime(R0_t2, R0_t0 - 1)):as.integer(difftime(R0_t4, R0_t0 - 1))
+# lambda_vals <- approx(x = c(lambda_tt[1], lambda_tt[length(lambda_tt)]), y = c(0, 0.01), xout = lambda_tt)$y
+# lambda_external[lambda_tt] <- lambda_vals
+# 
+# lambda_tt <- as.integer(difftime(R0_t4, R0_t0 - 1)):as.integer(difftime(R0_t5, R0_t0 - 1))
+# lambda_external[lambda_tt] <- 0.05
+
+
+# lambda_tt <- as.integer(difftime(R0_t3, R0_t0 - 1)):as.integer(difftime(R0_t5, R0_t0 - 1))
+# lambda_vals <- approx(x = c(lambda_tt[1], lambda_tt[length(lambda_tt)]), y = c(0, 0.01), xout = lambda_tt)$y
+# lambda_external[lambda_tt] <- lambda_vals
+# lambda_external[(lambda_tt[length(lambda_tt)]+1):length(lambda_external)] <- 0.01
+
+t_spread <- 10
+lambda_tt <- as.integer(difftime(R0_t3, R0_t0 - 1))
+lambda_tt <- seq(from = lambda_tt - t_spread/2, to = lambda_tt + t_spread/2, by = 1)
+lambda_external[lambda_tt] <- dnorm(x = lambda_tt, mean = lambda_tt[t_spread/2+1], sd = 3)
+lambda_external[lambda_tt] <- lambda_external[lambda_tt] / sum(lambda_external[lambda_tt]) * 0.05
+
+t_spread <- 20
+lambda_tt <- as.integer(difftime(R0_t7, R0_t0 - 1))
+lambda_tt <- seq(from = lambda_tt - t_spread/2, to = lambda_tt + t_spread/2, by = 1)
+lambda_external[lambda_tt] <- dnorm(x = lambda_tt, mean = lambda_tt[t_spread/2+1], sd = 3)
+lambda_external[lambda_tt] <- lambda_external[lambda_tt] / sum(lambda_external[lambda_tt]) * 0.01
+
+par(mfrow=c(2,1))
+plot(x = rt_out$Rt_tt, y = rt_out$Rt, type = "l", ylim = c(0, 3))
+plot(x = seq_along(lambda_external), y = lambda_external, type = "l")
+par(mfrow=c(1,1))
 
 # --------------------------------------------------------------------------------
 # get parameters
@@ -78,9 +100,9 @@ hs_constraints = "Present"
 seeding_cases <- 10
 
 # simulation parameters
-dt <- 0.1
-nrep <- 10 # for MC reps
-options("mc.cores" = nrep)
+dt <- 0.2
+# nrep <- 10 # for MC reps
+# options("mc.cores" = nrep)
 
 # get country and standardize population
 rep_country <- get_representative_country(income_group = income_group)
@@ -159,66 +181,111 @@ base_parameters <- safir::get_parameters(
 # run safir-squire; faster to calibrate with this version of the model
 # --------------------------------------------------------------------------------
 
-system.time(
-  saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
 
-    timesteps <- base_parameters$time_period/dt
-    variables <- create_variables(pop = pop, parameters = base_parameters)
-    events <- create_events(parameters = base_parameters)
-    attach_event_listeners(variables = variables,events = events,parameters = base_parameters, dt = dt)
-    renderer <- individual::Render$new(base_parameters$time_period)
-    processes <- list(
-      infection_process_cpp(parameters = base_parameters,variables = variables,events = events,dt = dt),
-      categorical_count_renderer_process_daily(renderer, variables$state, categories = variables$states$get_categories(),dt = dt)
-    )
-    setup_events(parameters = base_parameters,events = events,variables = variables,dt = dt)
 
-    individual::simulation_loop(
-      variables = variables,
-      events = events,
-      processes = processes,
-      timesteps = timesteps
-    )
-    df <- renderer$to_dataframe()
-    df$repetition <- x
-    return(df)
-  })
+
+timesteps <- base_parameters$time_period/dt
+variables <- create_variables(pop = pop, parameters = base_parameters)
+events <- create_events(parameters = base_parameters)
+attach_event_listeners(variables = variables,events = events,parameters = base_parameters, dt = dt)
+renderer <- individual::Render$new(base_parameters$time_period)
+processes <- list(
+  infection_process_cpp(parameters = base_parameters,variables = variables,events = events,dt = dt),
+  categorical_count_renderer_process_daily(renderer, variables$state, categories = variables$states$get_categories(),dt = dt)
 )
+setup_events(parameters = base_parameters,events = events,variables = variables,dt = dt)
 
-saf_reps <- do.call(rbind,saf_reps)
+system.time(individual::simulation_loop(
+  variables = variables,
+  events = events,
+  processes = processes,
+  timesteps = timesteps
+))
+df <- renderer$to_dataframe()
 
-saf_dt <- as.data.table(saf_reps)
+saf_dt <- as.data.table(df)
 saf_dt[, IMild_count := IMild_count + IAsymp_count]
 saf_dt[, IAsymp_count := NULL]
-saf_dt <- melt(saf_dt,id.vars = c("timestep","repetition"),variable.name = "name")
+saf_dt <- melt(saf_dt,id.vars = c("timestep"),variable.name = "name")
 saf_dt[, model := "safir"]
 saf_dt[, name := gsub("(^)(\\w*)(_count)", "\\2", name)]
 setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment","y"))
 
-ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
-  geom_line(alpha = 0.5) +
-  # geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
+ggplot(data = saf_dt, aes(t,y,color = compartment)) +
+  geom_line() +
   facet_wrap(~compartment, scales = "free")
 
-saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
-
-# a bit of a fudge to plot R0 on top of the deaths...scale it to that
-# max R0 is roughly in the middle of the y-axis (about 60 deaths/day)
-R0_df <- data.frame(x = c(tt_R0, time_period), y = c(R0, R0[length(R0)]))
-scaling_factor <- (60 / max(R0_df$y))
-R0_df$y <- R0_df$y * scaling_factor
+saf_deaths <- as.data.table(df)
+saf_deaths <- saf_deaths[, c("timestep", "D_count")]
+setnames(saf_deaths, c("D_count", "timestep"), c("D", "t"))
+saf_deaths <- saf_deaths[,  .(dy = diff(D), t = t[1:(length(t)-1)])]
 
 ggplot(data = saf_deaths) +
-  geom_line(aes(x = t, y = dy, group = repetition), alpha = 0.5) +
-  geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
-  geom_text(x = t1, y = -1, label = R0_t0) +
-  geom_text(x = t2, y = -1, label = R0_t1) +
-  geom_text(x = t3, y = -1, label = R0_t2) +
-  geom_text(x = time_period, y = -1, label = R0_t0 + time_period) +
-  geom_line(aes(x = x, y = y), data = R0_df) +
-  scale_y_continuous(sec.axis = sec_axis(~ ./scaling_factor, name = "R0"), name = "Deaths/day") +
+  geom_line(aes(x = t, y = dy)) +
   scale_x_continuous(name = "Time (days)") +
   theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
+
+
+# system.time(
+#   saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
+# 
+#     timesteps <- base_parameters$time_period/dt
+#     variables <- create_variables(pop = pop, parameters = base_parameters)
+#     events <- create_events(parameters = base_parameters)
+#     attach_event_listeners(variables = variables,events = events,parameters = base_parameters, dt = dt)
+#     renderer <- individual::Render$new(base_parameters$time_period)
+#     processes <- list(
+#       infection_process_cpp(parameters = base_parameters,variables = variables,events = events,dt = dt),
+#       categorical_count_renderer_process_daily(renderer, variables$state, categories = variables$states$get_categories(),dt = dt)
+#     )
+#     setup_events(parameters = base_parameters,events = events,variables = variables,dt = dt)
+# 
+#     individual::simulation_loop(
+#       variables = variables,
+#       events = events,
+#       processes = processes,
+#       timesteps = timesteps
+#     )
+#     df <- renderer$to_dataframe()
+#     df$repetition <- x
+#     return(df)
+#   })
+# )
+# 
+# saf_reps <- do.call(rbind,saf_reps)
+# 
+# saf_dt <- as.data.table(saf_reps)
+# saf_dt[, IMild_count := IMild_count + IAsymp_count]
+# saf_dt[, IAsymp_count := NULL]
+# saf_dt <- melt(saf_dt,id.vars = c("timestep","repetition"),variable.name = "name")
+# saf_dt[, model := "safir"]
+# saf_dt[, name := gsub("(^)(\\w*)(_count)", "\\2", name)]
+# setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment","y"))
+# 
+# ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
+#   geom_line(alpha = 0.5) +
+#   # geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
+#   facet_wrap(~compartment, scales = "free")
+# 
+# saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
+# 
+# # a bit of a fudge to plot R0 on top of the deaths...scale it to that
+# # max R0 is roughly in the middle of the y-axis (about 60 deaths/day)
+# R0_df <- data.frame(x = c(tt_R0, time_period), y = c(R0, R0[length(R0)]))
+# scaling_factor <- (60 / max(R0_df$y))
+# R0_df$y <- R0_df$y * scaling_factor
+# 
+# ggplot(data = saf_deaths) +
+#   geom_line(aes(x = t, y = dy, group = repetition), alpha = 0.5) +
+#   geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
+#   geom_text(x = t1, y = -1, label = R0_t0) +
+#   geom_text(x = t2, y = -1, label = R0_t1) +
+#   geom_text(x = t3, y = -1, label = R0_t2) +
+#   geom_text(x = time_period, y = -1, label = R0_t0 + time_period) +
+#   geom_line(aes(x = x, y = y), data = R0_df) +
+#   scale_y_continuous(sec.axis = sec_axis(~ ./scaling_factor, name = "R0"), name = "Deaths/day") +
+#   scale_x_continuous(name = "Time (days)") +
+#   theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
 
 
 # --------------------------------------------------------------------------------
