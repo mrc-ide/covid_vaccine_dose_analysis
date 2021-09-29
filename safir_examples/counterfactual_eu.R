@@ -12,57 +12,82 @@ library(parallel)
 library(countrycode)
 library(here)
 
+rm(list=ls());gc()
+
+
+# --------------------------------------------------------------------------------
+# interpolate Rt (piecewise linear)
+# --------------------------------------------------------------------------------
+
+# from Azra:
+#   
+#   1st wave Feb 20 - May 20 R=2.5
+# Jun 20 - Sept 20 R=0.9
+# 2nd wave Oct 20 - Jan 21 R=1.5
+# Feb 21 - Jun 21 R=1
+# 3rd wave Jul 21 - Sept 21 R=3
+# Oct 21 onwards continue R=3?
+#   
+#   Vaccine doses 1 and 2 - Start Jan 21 through to Jul 21
+# Boosters - start Oct 21 onwards.
+
+# Rt changes
+
+# piecewise segments
+R0_t0 <- as.Date(x = "2/1/2020", format = "%m/%d/%Y")
+R0_t1 <- as.Date(x = "3/1/2020", format = "%m/%d/%Y")
+R0_t2 <- as.Date(x = "6/1/2020", format = "%m/%d/%Y")
+R0_t3 <- as.Date(x = "9/1/2020", format = "%m/%d/%Y")
+R0_t4 <- as.Date(x = "10/1/2020", format = "%m/%d/%Y")
+R0_t5 <- as.Date(x = "1/1/2021", format = "%m/%d/%Y")
+R0_t6 <- as.Date(x = "2/1/2021", format = "%m/%d/%Y")
+R0_t7 <- as.Date(x = "6/1/2021", format = "%m/%d/%Y")
+R0_t8 <- as.Date(x = "7/1/2021", format = "%m/%d/%Y")
+
+tmax_date <- as.Date(x = "12/1/2021", format = "%m/%d/%Y")
+time_period <- as.integer(difftime(tmax_date, R0_t0 - 1))
+
+dates <- c(R0_t0, R0_t1, R0_t2, R0_t3, R0_t4, R0_t5, R0_t6, R0_t7, R0_t8)
+rt <-    c(2.5,   2.5,   0.9,   0.9,   1.5,   1.5,   1.0,   1.0,   3)
+rt_out <- safir::interpolate_rt(dates = dates, rt = rt, max_date = tmax_date)
+
+# daily per-capita prob of external infection
+lambda_external <- rep(0, time_period)
+
+# first pulse, spread out hazard of 0.05 over 10 days right before 2nd wave
+t_spread <- 10
+lambda_tt <- as.integer(difftime(R0_t3, R0_t0 - 1))
+lambda_tt <- seq(from = lambda_tt - t_spread/2, to = lambda_tt + t_spread/2, by = 1)
+lambda_external[lambda_tt] <- dnorm(x = lambda_tt, mean = lambda_tt[t_spread/2+1], sd = 3)
+lambda_external[lambda_tt] <- lambda_external[lambda_tt] / sum(lambda_external[lambda_tt]) * 0.05
+
+# second pulse, spread out hazard of 0.01 over 20 days right before 2nd wave
+t_spread <- 20
+lambda_tt <- as.integer(difftime(R0_t7, R0_t0 - 1))
+lambda_tt <- seq(from = lambda_tt - t_spread/2, to = lambda_tt + t_spread/2, by = 1)
+lambda_external[lambda_tt] <- dnorm(x = lambda_tt, mean = lambda_tt[t_spread/2+1], sd = 3)
+lambda_external[lambda_tt] <- lambda_external[lambda_tt] / sum(lambda_external[lambda_tt]) * 0.01
+
+# plot Rt and pulsed external FoI
+par(mfrow=c(2,1))
+plot(x = rt_out$Rt_tt, y = rt_out$Rt, type = "l", ylim = c(0, 3))
+plot(x = seq_along(lambda_external), y = lambda_external, type = "l")
+par(mfrow=c(1,1))
+
 
 # --------------------------------------------------------------------------------
 # get parameters
 # --------------------------------------------------------------------------------
 
-rm(list=ls());gc()
 source(here::here("safir_examples/utils.R"))
 
 target_pop <- 1e6
 income_group = "HIC"
 hs_constraints = "Present"
-
-# R0_t0 <- as.Date(x = "3/1/2020", format = "%m/%d/%Y")
-# R0_t1 <- as.Date(x = "5/1/2020", format = "%m/%d/%Y")
-# R0_t2 <- as.Date(x = "7/1/2021", format = "%m/%d/%Y")
-# R0 <- c(2, 1.25, 2)
-# tt_R0 <- c(0, as.integer(difftime(R0_t1, R0_t0)), as.integer(difftime(R0_t2, R0_t0)))
-# seeding_cases <- 20
-
-# the inflection points in the piecewise linear R0
-R0_t0 <- as.Date(x = "3/1/2020", format = "%m/%d/%Y")
-R0_t1 <- as.Date(x = "5/1/2020", format = "%m/%d/%Y")
-R0_t2 <- as.Date(x = "5/1/2021", format = "%m/%d/%Y")
-R0_t3 <- as.Date(x = "7/1/2021", format = "%m/%d/%Y")
-
-# slope change points in terms of numeric days
-t1 <- as.integer(difftime(R0_t1, R0_t0))
-t2 <- as.integer(difftime(R0_t2, R0_t0))
-t3 <- as.integer(difftime(R0_t3, R0_t0))
-
-# first piecewise element: initial decay
-R0_v0 <- 2.5
-R0_v1 <- 1.35
-R0_seq1 <- seq(from = 0, to = t1, by = 1)
-R0_vseq1 <- approx(x = c(0, t1), y = c(R0_v0, R0_v1), xout = R0_seq1)$y
-
-# third piecewise element: second wave
-R0_v2 <- 2
-R0_seq2 <- seq(from = t2, to = t3, by = 1)
-R0_vseq2 <- approx(x = c(t2, t3), y = c(R0_v1, R0_v2), xout = R0_seq2)$y
-
-# stick them together for get_parameters to turn into time series of beta
-tt_R0 <- c(R0_seq1, R0_seq2)
-R0 <- c(R0_vseq1, R0_vseq2)
-seeding_cases <- 20
+seeding_cases <- 10
 
 # simulation parameters
-time_period <- 365*2
 dt <- 0.2
-nrep <- 10 # for MC reps
-options("mc.cores" = nrep)
 
 # get country and standardize population
 rep_country <- get_representative_country(income_group = income_group)
@@ -85,15 +110,16 @@ base_parameters <- safir::get_parameters(
   population = pop$n,
   contact_matrix_set = contact_mat,
   iso3c = iso3c,
-  R0 = R0,
-  tt_R0 = tt_R0,
+  R0 = rt_out$Rt,
+  tt_R0 = rt_out$Rt_tt,
   time_period = time_period,
   dt = dt,
   hosp_bed_capacity = hc$hosp_beds,
   ICU_bed_capacity = hc$ICU_beds,
   prob_non_severe_death_treatment = pnsdt,
   dur_R = 365,
-  seeding_cases = seeding_cases
+  seeding_cases = seeding_cases,
+  lambda_external = lambda_external
 )
 
 
@@ -140,6 +166,53 @@ vaccine_parameters <- make_vaccine_parameters(
 # run safir-squire; faster to calibrate with this version of the model
 # --------------------------------------------------------------------------------
 
+# run one trajectory
+timesteps <- base_parameters$time_period/dt
+variables <- create_variables(pop = pop, parameters = base_parameters)
+events <- create_events(parameters = base_parameters)
+attach_event_listeners(variables = variables,events = events,parameters = base_parameters, dt = dt)
+renderer <- individual::Render$new(base_parameters$time_period)
+processes <- list(
+  infection_process_cpp(parameters = base_parameters,variables = variables,events = events,dt = dt),
+  categorical_count_renderer_process_daily(renderer, variables$state, categories = variables$states$get_categories(),dt = dt)
+)
+setup_events(parameters = base_parameters,events = events,variables = variables,dt = dt)
+
+system.time(individual::simulation_loop(
+  variables = variables,
+  events = events,
+  processes = processes,
+  timesteps = timesteps
+))
+df <- renderer$to_dataframe()
+
+saf_dt <- as.data.table(df)
+saf_dt[, IMild_count := IMild_count + IAsymp_count]
+saf_dt[, IAsymp_count := NULL]
+saf_dt <- melt(saf_dt,id.vars = c("timestep"),variable.name = "name")
+saf_dt[, model := "safir"]
+saf_dt[, name := gsub("(^)(\\w*)(_count)", "\\2", name)]
+setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment","y"))
+
+ggplot(data = saf_dt, aes(t,y,color = compartment)) +
+  geom_line() +
+  facet_wrap(~compartment, scales = "free")
+
+saf_deaths <- as.data.table(df)
+saf_deaths <- saf_deaths[, c("timestep", "D_count")]
+setnames(saf_deaths, c("D_count", "timestep"), c("D", "t"))
+saf_deaths <- saf_deaths[,  .(dy = diff(D), t = t[1:(length(t)-1)])]
+
+ggplot(data = saf_deaths) +
+  geom_line(aes(x = t, y = dy)) +
+  scale_x_continuous(name = "Time (days)") +
+  theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
+
+
+# run it in parallel to test most trajectories look "normal"
+nrep <- 10 # for MC reps
+options("mc.cores" = nrep)
+
 system.time(
   saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
 
@@ -153,7 +226,7 @@ system.time(
       categorical_count_renderer_process_daily(renderer, variables$state, categories = variables$states$get_categories(),dt = dt)
     )
     setup_events(parameters = base_parameters,events = events,variables = variables,dt = dt)
-    
+
     individual::simulation_loop(
       variables = variables,
       events = events,
@@ -178,33 +251,28 @@ setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment"
 
 ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
   geom_line(alpha = 0.5) +
-  geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
   facet_wrap(~compartment, scales = "free")
 
-saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
-
-# a bit of a fudge to plot R0 on top of the deaths...scale it to that
-# max R0 is roughly in the middle of the y-axis (about 60 deaths/day)
-R0_df <- data.frame(x = c(tt_R0, time_period), y = c(R0, R0[length(R0)]))
-scaling_factor <- (60 / max(R0_df$y))
-R0_df$y <- R0_df$y * scaling_factor
+saf_deaths <- as.data.table(saf_reps)
+saf_deaths <- saf_deaths[, c("timestep", "D_count", "repetition")]
+setnames(saf_deaths, c("D_count", "timestep"), c("D", "t"))
+saf_deaths <- saf_deaths[,  .(dy = diff(D), t = t[1:(length(t)-1)]), by = .(repetition)]
+saf_deaths[, "date" := R0_t0 + (t - 1)]
 
 ggplot(data = saf_deaths) +
-  geom_line(aes(x = t, y = dy, group = repetition), alpha = 0.5) +
-  geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
-  geom_text(x = t1, y = -1, label = R0_t0) + 
-  geom_text(x = t2, y = -1, label = R0_t1) + 
-  geom_text(x = t3, y = -1, label = R0_t2) +
-  geom_text(x = time_period, y = -1, label = R0_t0 + time_period) +
-  geom_line(aes(x = x, y = y), data = R0_df) + 
-  scale_y_continuous(sec.axis = sec_axis(~ ./scaling_factor, name = "R0"), name = "Deaths/day") +
-  scale_x_continuous(name = "Time (days)") +
+  geom_line(aes(x = date, y = dy, group = repetition), alpha = 0.5) +
+  scale_x_date(name = "Date", date_labels = "%b %Y", breaks = dates) +
+  ylab("Deaths/day") +
   theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
 
 
 # --------------------------------------------------------------------------------
 # run safir-vaccination model, but not distributing any vaccines
 # --------------------------------------------------------------------------------
+
+# run it in parallel to test most trajectories look "normal"
+nrep <- 10 # for MC reps
+options("mc.cores" = nrep)
 
 system.time(
   saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
@@ -262,14 +330,24 @@ saf_dt <- do.call(what = rbind, args = lapply(X = saf_reps, FUN = function(x){x$
 saf_dt[, IMild_count := IMild_count + IAsymp_count]
 saf_dt[, IAsymp_count := NULL]
 saf_dt <- melt(saf_dt,id.vars = c("timestep","repetition"),variable.name = "name")
-saf_dt[, model := "safir"]
 saf_dt[, name := gsub("(^)(\\w*)(_count)", "\\2", name)]
 setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment","y"))
 
 ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
   geom_line(alpha = 0.5) +
-  geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
   facet_wrap(~compartment, scales = "free")
+
+# plot deaths
+saf_deaths <- saf_dt[compartment == "D", ]
+saf_deaths[, compartment := NULL]
+saf_deaths <- saf_deaths[,  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
+saf_deaths[, "date" := R0_t0 + (t - 1)]
+
+ggplot(data = saf_deaths) +
+  geom_line(aes(x = date, y = dy, group = repetition), alpha = 0.5) +
+  scale_x_date(name = "Date", date_labels = "%b %Y", breaks = dates) +
+  ylab("Deaths/day") +
+  theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
 
 # extract the doses/age trajectories
 vaccine_dt <- do.call(what = rbind, args = lapply(X = saf_reps, FUN = function(x){x$doses_age}))
@@ -290,23 +368,3 @@ ggplot(data = vaccine_dt) +
   geom_line(aes(x = timestep, y = coverage, color = as.factor(dose))) +
   facet_grid(age ~ .) +
   theme_bw()
-  
-# data.table of deaths is just difference in cumulative deaths
-saf_deaths <- saf_dt[compartment == "D",  .(dy = diff(y), t = 1:(.N-1)), by = .(repetition)]
-
-# again, the fudge to plot R0 on the same ggplot
-R0_df <- data.frame(x = c(tt_R0, time_period), y = c(R0, R0[length(R0)]))
-scaling_factor <- (60 / max(R0_df$y))
-R0_df$y <- R0_df$y * scaling_factor
-
-ggplot(data = saf_deaths) +
-  geom_line(aes(x = t, y = dy, group = repetition), alpha = 0.5) +
-  geom_vline(xintercept = c(t1, t2, t3), linetype = 2, alpha = 0.5) +
-  geom_text(x = t1, y = -1, label = R0_t0) + 
-  geom_text(x = t2, y = -1, label = R0_t1) + 
-  geom_text(x = t3, y = -1, label = R0_t2) +
-  geom_text(x = time_period, y = -1, label = R0_t0 + time_period) +
-  geom_line(aes(x = x, y = y), data = R0_df) + 
-  scale_y_continuous(sec.axis = sec_axis(~ ./scaling_factor, name = "R0"), name = "Deaths/day") +
-  scale_x_continuous(name = "Time (days)") +
-  theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
