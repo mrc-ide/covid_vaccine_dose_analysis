@@ -10,7 +10,7 @@ df1_vacc <- df1 %>%
   pivot_longer(cols = c("Dose 1", "Dose 2", "Dose 3"), names_to = "dose") %>%
   filter(strategy_name != "Counterfactual")
 
-p1 <- ggplot(data = filter(df1_vacc, income_group %in% c("HIC", "UMIC")), aes(x = as.Date(date), y = value/target_pop*100, fill = dose)) +
+p1 <- ggplot(data = filter(df1_vacc, income_group %in% c("HIC", "UMIC")), aes(x = as.Date(date), y = value/target_pop*100, fill = forcats::fct_rev(dose))) +
   geom_area(stat = "identity") +
   facet_grid( income_group ~ strategy_name) +
   theme_bw() +
@@ -18,7 +18,7 @@ p1 <- ggplot(data = filter(df1_vacc, income_group %in% c("HIC", "UMIC")), aes(x 
         panel.border = element_blank(),
         axis.line = element_line(),
         legend.text.align = 0) +
-  scale_fill_brewer(palette = "Paired") +
+  scale_fill_brewer(palette = "Paired", direction = -1) +
   labs(x = "Timestep (days)", y = "Vaccinated .(%)", fill = "Dose number")
 p1
 p2 <- ggplot(data = filter(df1_vacc, income_group %in% c("LMIC", "LIC")), aes(x = as.Date(date), y = value/target_pop*100, fill = dose)) +

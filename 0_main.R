@@ -22,5 +22,5 @@ source("3_plots_impact_scenario5.R")
 source("3_plots_impact_scenario6.R")
 
 # plot dosing strategies for each research question
-source("4_plots_doses_scenario1_scenario5.R")
-source("4_plots_doses_scenario2_scenario6.R")
+source("4_plots_doses_scenario1_scenario5_v3.R")
+source("4_plots_doses_scenario2_scenario6_v3.R")
