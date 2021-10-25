@@ -1,13 +1,13 @@
 # join the runs and link to parameters
-scenarios <- read_csv("scenarios.csv", show_col_types = FALSE)
-df <- list.files(path = "output_cluster/", pattern = ".rds")
-df <- map(paste0("output_cluster/", df), readRDS)
+scenarios <- read_csv("scenarios_eu.csv", show_col_types = FALSE)
+df <- list.files(path = "output_cluster_eu/", pattern = ".rds")
+df <- map(paste0("output_cluster_eu/", df), readRDS)
 df <- do.call(rbind,df)
 df <- left_join(df, scenarios, by = "scenario") 
 
 # summarise totals over repetitions
 df <- df %>%
-  group_by(income_group, target_pop, R0, Rt1, Rt2, max_coverage, age_groups_covered, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase) %>%
+  group_by(income_group, target_pop, max_coverage, age_groups_covered, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, dose_strategy) %>%
   mutate(deaths_med = median(deaths),
          deaths_lower = quantile(deaths, 0.025),
          deaths_upper = quantile(deaths, 0.975),
@@ -23,7 +23,7 @@ df_summarise_totals <- df %>%
 df_summarise <- df %>%
   unnest(cols) %>%
   select(-c(deaths, prop_R)) %>%
-  group_by(timestep, income_group, target_pop, R0, Rt1, Rt2, max_coverage, age_groups_covered, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, deaths_med, deaths_lower, deaths_upper, prop_R_med, total_doses_med) %>%
+  group_by(timestep, income_group, target_pop, max_coverage, age_groups_covered, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, dose_strategy, deaths_med, deaths_lower, deaths_upper, prop_R_med, total_doses_med) %>%
   summarise(deaths_t = median(D_count),
             deaths_tmin = quantile(D_count, 0.025),
             deaths_tmax = quantile(D_count, 0.975),
@@ -33,9 +33,13 @@ df_summarise <- df %>%
             dose3_t = median(X3_count),
             prop_R = round(median(R_count)/target_pop * 100,2),
             .groups = 'drop') %>%
-  unique()
+  unique() %>%
+  mutate(date = timestep + as.Date("2020-02-01"))
+
+saveRDS(df_summarise, "processed_outputs/df_summarise_eu.rds")
+saveRDS(df_summarise_totals, "processed_outputs/df_summarise_totals_eu.rds")
 
 df1 <- filter(df_summarise, max_coverage == 0.8, income_group == "HIC") 
 ggplot(data = df1, aes(x = timestep, y  = vaccines_t, col = factor(vaccine_doses))) +
   geom_line() +
-  facet_wrap(~age_groups_covered)
+  facet_wrap(vaccine_doses~age_groups_covered + dose_strategy)
