@@ -43,3 +43,4 @@ vignettes/*.pdf
 /output/
 /output_cluster/
 output_cluster_v7/
+/output*
