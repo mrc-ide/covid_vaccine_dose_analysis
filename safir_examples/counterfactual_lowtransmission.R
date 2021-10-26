@@ -84,7 +84,7 @@ hs_constraints = "Present"
 seeding_cases <- 10
 
 # simulation parameters
-dt <- 0.5
+dt <- 0.2
 
 # get country and standardize population
 rep_country <- get_representative_country(income_group = income_group)
@@ -206,3 +206,107 @@ ggplot(data = saf_deaths) +
   geom_line(aes(x = date, y = dy)) +
   scale_x_date(date_breaks = "2 month", date_labels = "%m/%Y")
   theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
+  
+
+# --------------------------------------------------------------------------------
+# run safir-vaccination model, but not distributing any vaccines
+# --------------------------------------------------------------------------------
+
+# run it in parallel to test most trajectories look "normal"
+nrep <- 10 # for MC reps
+options("mc.cores" = nrep)
+
+system.time(
+  saf_reps <- mclapply(X = 1:nrep, FUN = function(x){
+    
+    # create variables
+    timesteps <- vaccine_parameters$time_period/dt
+    variables <- create_variables(pop = pop, parameters = vaccine_parameters)
+    variables <- create_vaccine_variables(variables = variables,parameters = vaccine_parameters)
+    
+    # create events
+    events <- create_events(parameters = vaccine_parameters)
+    events <- create_events_vaccination(events = events,parameters = vaccine_parameters)
+    attach_event_listeners(variables = variables,events = events,parameters = vaccine_parameters, dt = dt)
+    attach_event_listeners_vaccination(variables = variables,events = events,parameters = vaccine_parameters,dt = dt)
+    
+    # make renderers
+    renderer <- Render$new(vaccine_parameters$time_period)
+    dose_age_renderer <- Render$new(vaccine_parameters$time_period)
+    
+    # processes
+    processes <- list(
+      vaccine_ab_titre_process(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
+      vaccination_process(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
+      infection_process_vaccine_cpp(parameters = vaccine_parameters,variables = variables,events = events,dt = dt),
+      dose_age_render_process_daily(renderer = dose_age_renderer, age = variables$discrete_age, dose = variables$dose_num, parameters = vaccine_parameters, dt = dt),
+      categorical_count_renderer_process_daily(renderer = renderer,variable = variables$states,categories = variables$states$get_categories(),dt = dt)
+    )
+    
+    setup_events_vaccine(parameters = vaccine_parameters,events = events,variables = variables,dt = dt)
+    
+    simulation_loop_vaccine(
+      variables = variables,
+      events = events,
+      processes = processes,
+      timesteps = timesteps,
+      progress = FALSE
+    )
+    
+    df <- as.data.table(renderer$to_dataframe())
+    df[, "repetition" := x]
+    
+    df_dose_age <- as.data.table(dose_age_renderer$to_dataframe())
+    df_dose_age[, "repetition" := x]
+    
+    return(list(
+      compartments = df,
+      doses_age = df_dose_age
+    ))
+  })
+)
+
+# extract the trajectories of each compartment
+saf_dt <- do.call(what = rbind, args = lapply(X = saf_reps, FUN = function(x){x$compartments}))
+
+saf_dt[, IMild_count := IMild_count + IAsymp_count]
+saf_dt[, IAsymp_count := NULL]
+saf_dt <- melt(saf_dt,id.vars = c("timestep","repetition"),variable.name = "name")
+saf_dt[, name := gsub("(^)(\\w*)(_count)", "\\2", name)]
+setnames(x = saf_dt,old = c("timestep","name","value"),new = c("t","compartment","y"))
+
+ggplot(data = saf_dt, aes(t,y,color = compartment, group = repetition)) +
+  geom_line(alpha = 0.5) +
+  facet_wrap(~compartment, scales = "free")
+
+# plot deaths
+saf_deaths <- saf_dt[compartment == "D", ]
+saf_deaths[, compartment := NULL]
+saf_deaths <- saf_deaths[,  .(dy = diff(y), t = t[1:(length(t)-1)]), by = .(repetition)]
+saf_deaths[, date := as.Date(t, origin = "2/1/2020", format = "%m/%d/%Y")]
+
+ggplot(data = saf_deaths) +
+  geom_line(aes(x = date, y = dy, group = repetition), alpha = 0.5) +
+  scale_x_date(date_breaks = "2 month", date_labels = "%m/%Y") +
+  ylab("Deaths/day") +
+  theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
+
+# extract the doses/age trajectories
+vaccine_dt <- do.call(what = rbind, args = lapply(X = saf_reps, FUN = function(x){x$doses_age}))
+vaccine_dt <- melt(data = vaccine_dt, id.vars = c("timestep", "repetition"))
+vaccine_dt[, c("dose", "age") := tstrsplit(x = variable, "_", keep = c(2,4)) ]
+vaccine_dt[, c("dose", "age") := .(as.integer(dose), as.integer(age))]
+vaccine_dt[, variable := NULL]
+
+# need to divide rows corresponding to an age group by total size of that group
+# to compare proportions
+age_dt <- data.table(size = pop$n, age = 1:17)
+
+vaccine_dt <- vaccine_dt[age_dt, on = .(age)]
+vaccine_dt[, coverage := value / size]
+vaccine_dt[, c("value", "size") := NULL]
+
+ggplot(data = vaccine_dt) +
+  geom_line(aes(x = timestep, y = coverage, color = as.factor(dose))) +
+  facet_grid(age ~ .) +
+  theme_bw()
