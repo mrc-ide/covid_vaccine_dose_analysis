@@ -11,6 +11,7 @@ library(data.table)
 library(parallel)
 library(countrycode)
 library(here)
+library(dplyr) # for mutate
 
 rm(list=ls());gc()
 
