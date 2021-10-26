@@ -27,6 +27,14 @@ rm(list=ls());gc()
 
 # Rt changes
 
+# this sets up for the 1st scenario. To change to 2nd, just change to
+# R0_t3 <- as.Date(x = "3/1/2022", format = "%m/%d/%Y")
+# R0_t4 <- as.Date(x = "4/1/2022", format = "%m/%d/%Y")
+# (I usually start ramping up the Rt a month before it should reach a new stable level)
+# and you would want to change tmax_date to whatever the new maximum simulation 
+# time is.
+# likewise you could move things earlier to relax in Jan 2022
+
 # piecewise segments
 R0_t0 <- as.Date(x = "2/1/2020", format = "%m/%d/%Y")
 R0_t1 <- as.Date(x = "3/1/2020", format = "%m/%d/%Y")
@@ -192,8 +200,9 @@ saf_deaths <- as.data.table(df)
 saf_deaths <- saf_deaths[, c("timestep", "D_count")]
 setnames(saf_deaths, c("D_count", "timestep"), c("D", "t"))
 saf_deaths <- saf_deaths[,  .(dy = diff(D), t = t[1:(length(t)-1)])]
+saf_deaths[, date := as.Date(t, origin = "2/1/2020", format = "%m/%d/%Y")]
 
 ggplot(data = saf_deaths) +
-  geom_line(aes(x = t, y = dy)) +
-  scale_x_continuous(name = "Time (days)") +
+  geom_line(aes(x = date, y = dy)) +
+  scale_x_date(date_breaks = "2 month", date_labels = "%m/%Y")
   theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12))
