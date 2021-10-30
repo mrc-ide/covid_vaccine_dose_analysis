@@ -142,7 +142,7 @@ run_scenario <-
     
     # if we want to implement antibody model following infection
     if (ab_model_infection == TRUE){
-      parameters$mu_ab_infection <- ab_parameters$mu_ab
+      parameters$mu_ab_infection <- vax_pars$mu_ab
     }
     
     # create variables
@@ -185,11 +185,13 @@ run_scenario <-
                            variables = variables,
                            dt = dt)
       
-      simulation_loop_vaccine(
+      simulation_loop_safir(
         variables = variables,
         events = events,
         processes = processes,
-        timesteps = timesteps
+        timesteps = timesteps,
+        variables_dont_update = c("discrete_age", "phase"),
+        progress = FALSE
       )
       df <- renderer$to_dataframe()
       df_vacc <- vaxx_renderer$to_dataframe()
