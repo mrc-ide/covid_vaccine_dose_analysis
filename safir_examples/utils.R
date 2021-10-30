@@ -82,7 +82,7 @@ get_vaccine_pars <- function(
   mu_ab_list <- data.frame(name = c("Oxford-AstraZeneca", "Pfizer", "Moderna"),
                            mu_ab_d1 = c(0.12, 0.12, ((185+273)/2)/321),
                            mu_ab_d2 = c(0.41, 1.04,  654/158)) %>%
-    mutate(mu_ab_d1 = mu_ab_d1/variant_fold_reduction,
+    dplyr::mutate(mu_ab_d1 = mu_ab_d1/variant_fold_reduction,
            mu_ab_d2 = mu_ab_d2/variant_fold_reduction) %>%
     dplyr::mutate(mu_ab_d3 = mu_ab_d2 * dose_3_fold_increase)
   
