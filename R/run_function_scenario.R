@@ -16,7 +16,8 @@ run_scenario <-
            dose_3_fold_increase = 1,
            age_groups_covered_d3 = 14,
            vacc_per_week = 0.025,
-           name = "scenario1"){
+           name = "scenario1",
+           ab_model_infection = FALSE){
     
     # set up transmission
     # --------------------------------------------------------------------------------
@@ -139,6 +140,11 @@ run_scenario <-
       next_dose_priority_matrix = next_dose_priority
     )
     
+    # if we want to implement antibody model following infection
+    if (ab_model_infection == TRUE){
+      parameters$mu_ab_infection <- ab_parameters$mu_ab
+    }
+    
     # create variables
     timesteps <- parameters$time_period/dt
 
@@ -147,11 +153,18 @@ run_scenario <-
       variables <- create_variables(pop = pop, parameters = parameters)
       variables <- create_vaccine_variables(variables = variables, parameters = parameters)
       
+      if (ab_model_infection == TRUE){
+        variables <- create_natural_immunity_variables(variables = variables, parameters = parameters)
+      }
+      
       # creates the list of events and attaches listeners which handle state changes and queue future events
       events <- create_events(parameters = parameters)
       events <- create_events_vaccination(events = events, parameters = parameters)
       attach_event_listeners(variables = variables, events = events, parameters = parameters, dt = dt)
       attach_event_listeners_vaccination(variables = variables,events = events,parameters = parameters,dt = dt)
+      if (ab_model_infection == TRUE){
+        attach_event_listeners_natural_immunity(variables = variables, events = events, parameters = parameters, dt = dt)
+      }
       
       # renderer object is made
       renderer <- individual::Render$new(parameters$time_period)
