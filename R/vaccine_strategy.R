@@ -1,6 +1,6 @@
-get_vaccine_strategy <- function(name, days_to_vacc_start, doses_per_day, time_period, max_coverage, age_groups_covered, age_groups_covered_d3 = NA, vaccine_doses, pop, vacc_per_week){
+get_vaccine_strategy <- function(strategy, days_to_vacc_start, doses_per_day, time_period, max_coverage, age_groups_covered, age_groups_covered_d3 = NA, vaccine_doses, pop, vacc_per_week, t_d3){
   
-  if (name %in% c("scenario1", "scenario5")) {
+  if (strategy == "realistic") {
     
     # now we want to simulate a country having vaccinated all of the eligible population with the first and second dose (15 years + ) before switching to a booster dose
     vaccine_set <- c(rep(0, days_to_vacc_start), rep(doses_per_day, time_period - days_to_vacc_start))
@@ -23,21 +23,23 @@ get_vaccine_strategy <- function(name, days_to_vacc_start, doses_per_day, time_p
     }
   }
   
-  if (name %in% c("scenario2", "scenario6")){
+  if (strategy == "same_doses"){
     
     coverage <- sum(pop$n[(17 - age_groups_covered + 1):17])/sum(pop$n)
     days_to_vacc <- floor(coverage / (vacc_per_week/7) * max_coverage * 2)
     days_to_boost <- floor(days_to_vacc)
       
     if (days_to_vacc < 28) {days_to_vacc = 28}
+    
+    if (days_to_vacc >= (t_d3 + 28)) {t_d3 = days_to_vacc}
       
       vaccine_set <- c(rep(0, days_to_vacc_start),
                        rep(doses_per_day/2, 28),
                        rep(doses_per_day, floor(days_to_vacc - 28)),
                        rep(doses_per_day/2, 28),
-                       rep(0, 268 - days_to_vacc + 28),
+                       rep(0, t_d3 + 28 - days_to_vacc + 28),
                        rep(doses_per_day/2, days_to_boost),
-                       rep(0, time_period - days_to_vacc_start - 268 -28 -28 - days_to_boost))
+                       rep(0, time_period - days_to_vacc_start - t_d3 - 28 - 56 - days_to_boost))
       
       vaccine_coverage_strategy <- list()
       
@@ -57,6 +59,6 @@ get_vaccine_strategy <- function(name, days_to_vacc_start, doses_per_day, time_p
       } 
   }
 
-  return(list(vaccine_set = vaccine_set, vaccine_coverage_strategy = vaccine_coverage_strategy, next_dose_priority = next_dose_priority))
+  return(list(vaccine_set = vaccine_set, vaccine_coverage_strategy = vaccine_coverage_strategy, next_dose_priority = next_dose_priority, t_d3 = t_d3))
   
 }

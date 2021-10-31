@@ -17,7 +17,12 @@ run_scenario <-
            age_groups_covered_d3 = 14,
            vacc_per_week = 0.025,
            name = "scenario1",
-           ab_model_infection = FALSE){
+           ab_model_infection = FALSE,
+           std10 = 0.44,
+           t_d3 = 240,
+           period_s = 250,
+           t_period_l = 365,
+           strategy = "realistic"){
     
     # set up transmission
     # --------------------------------------------------------------------------------
@@ -49,7 +54,7 @@ run_scenario <-
     R0_t7 <- as.Date(x = "6/1/2021", format = "%m/%d/%Y")
     R0_t8 <- as.Date(x = "7/1/2021", format = "%m/%d/%Y")
     
-    tmax_date <- as.Date(x = "12/31/2022", format = "%m/%d/%Y")
+    tmax_date <- as.Date(x = "3/31/2023", format = "%m/%d/%Y")
     time_period <- as.integer(difftime(tmax_date, R0_t0 - 1))
     
     dates <- c(R0_t0, R0_t1, R0_t2, R0_t3, R0_t4, R0_t5, R0_t6, R0_t7, R0_t8)
@@ -112,23 +117,29 @@ run_scenario <-
     # --------------------------------------------------------------------------------
     # get vaccine parameters
     # --------------------------------------------------------------------------------
-    # dosing
-    vax_pars <- get_vaccine_pars(vaccine = vaccine,
-                                 variant_fold_reduction = variant_fold_reduction,
-                                 dose_3_fold_increase = dose_3_fold_increase,
-                                 vaccine_doses = vaccine_doses)
-    
-    if (vaccine_doses == 2) {dose_period <- c(NaN, 28)}
-    if (vaccine_doses == 3) {dose_period <- c(NaN, 28, 268)}
-    
     # doses available each day
     doses_per_day <- floor(sum(pop$n) * vacc_per_week / 7)
     
-    vaccine_out <- get_vaccine_strategy(name, days_to_vacc_start = days_to_vacc_start, doses_per_day = doses_per_day, time_period = time_period, max_coverage = max_coverage, age_groups_covered = age_groups_covered, age_groups_covered_d3 = age_groups_covered_d3, vaccine_doses = vaccine_doses, pop = pop, vacc_per_week = vacc_per_week)
+    vaccine_out <- get_vaccine_strategy(strategy, days_to_vacc_start = days_to_vacc_start, doses_per_day = doses_per_day, time_period = time_period, max_coverage = max_coverage, age_groups_covered = age_groups_covered, age_groups_covered_d3 = age_groups_covered_d3, vaccine_doses = vaccine_doses, pop = pop, vacc_per_week = vacc_per_week, t_d3 = t_d3)
     
     vaccine_set <- vaccine_out$vaccine_set
     vaccine_coverage_strategy <- vaccine_out$vaccine_coverage_strategy
     next_dose_priority <- vaccine_out$next_dose_priority
+    t_d3 <- vaccine_out$t_d3
+    
+    # profiles and dosing
+
+    vax_pars <- get_vaccine_pars(vaccine = vaccine,
+                                 variant_fold_reduction = variant_fold_reduction,
+                                 dose_3_fold_increase = dose_3_fold_increase,
+                                 vaccine_doses = vaccine_doses,
+                                 std10 = std10,
+                                 t_d3 = t_d3,
+                                 period_s = period_s,
+                                 t_period_l = t_period_l)
+    # dosing
+    if (vaccine_doses == 2) {dose_period <- c(NaN, 28)}
+    if (vaccine_doses == 3) {dose_period <- c(NaN, 28, (t_d3 + 28))}
     
     # combine parameters and verify
     parameters <- make_vaccine_parameters(

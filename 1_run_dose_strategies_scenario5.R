@@ -31,6 +31,7 @@ variant_fold_reduction <- 1
 dose_3_fold_increase <- 6
 vacc_per_week <- 0.015
 name <- "scenario5"
+antibody_model_infection <- c(FALSE, TRUE)
 
 #### Create scenarios ##########################################################
 
@@ -48,7 +49,8 @@ scenarios <- expand_grid(income_group = income_group,
                          seeding_cases = seeding_cases,
                          variant_fold_reduction = variant_fold_reduction,
                          dose_3_fold_increase = dose_3_fold_increase,
-                         vacc_per_week = vacc_per_week)
+                         vacc_per_week = vacc_per_week,
+                         antibody_model_infection = antibody_model_infection)
 
 vaccine_doses <- 2
 max_coverage <- 0
@@ -69,7 +71,8 @@ scenarios_counter <- expand_grid(income_group = income_group,
                                  seeding_cases = seeding_cases,
                                  variant_fold_reduction = variant_fold_reduction,
                                  dose_3_fold_increase = dose_3_fold_increase,
-                                 vacc_per_week = vacc_per_week)
+                                 vacc_per_week = vacc_per_week,
+                                 antibody_model_infection = antibody_model_infection)
 
 scenarios <- rbind(scenarios, scenarios_counter)
 

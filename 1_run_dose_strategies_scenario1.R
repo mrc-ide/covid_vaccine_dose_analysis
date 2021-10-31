@@ -19,7 +19,7 @@ target_pop <- 1e6
 income_group <- c("HIC", "UMIC")
 hs_constraints <- "Present"
 dt <- 0.5
-repetition <- 1:2
+repetition <- 1:20
 vacc_start <- "1/1/2021"
 vaccine_doses <- c(2,3)
 vaccine <- "Pfizer"
@@ -31,7 +31,8 @@ variant_fold_reduction <- 1
 dose_3_fold_increase <- 6
 vacc_per_week <- 0.025
 name <- "scenario1"
-ab_model_infection <- TRUE
+ab_model_infection <- c(FALSE, TRUE)
+strategy <- "realistic"
 
 #### Create scenarios ##########################################################
 
@@ -78,6 +79,7 @@ scenarios <- rbind(scenarios, scenarios_counter)
 
 scenarios$scenario <- 1:nrow(scenarios)
 scenarios$name <- name
+scenarios$strategy <- strategy
 
 nrow(scenarios)
 

@@ -10,7 +10,7 @@ df <- left_join(df, scenarios, by = "scenario") %>%
 
 # summarise totals over repetitions
 df <- df %>%
-  group_by(income_group, target_pop, max_coverage, age_groups_covered, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase) %>%
+  group_by(income_group, target_pop, max_coverage, age_groups_covered, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, ab_model_infection) %>%
   mutate(deaths_med = median(deaths),
          deaths_lower = quantile(deaths, 0.025),
          deaths_upper = quantile(deaths, 0.975),
@@ -26,7 +26,7 @@ df_summarise_totals <- df %>%
 df_summarise <- df %>%
   unnest(cols) %>%
   select(-c(deaths, prop_R)) %>%
-  group_by(timestep, income_group, target_pop, max_coverage, age_groups_covered, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, deaths_med, deaths_lower, deaths_upper, prop_R_med, total_doses_med) %>%
+  group_by(timestep, income_group, target_pop, max_coverage, age_groups_covered, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, ab_model_infection, deaths_med, deaths_lower, deaths_upper, prop_R_med, total_doses_med) %>%
   summarise(deaths_t = median(D_count),
             deaths_tmin = quantile(D_count, 0.025),
             deaths_tmax = quantile(D_count, 0.975),
@@ -44,7 +44,7 @@ saveRDS(df_summarise, "processed_outputs/df_summarise_scenario2.rds")
 saveRDS(df_summarise_totals, "processed_outputs/df_summarise_totals_scenario2.rds")
 
 # counterfactual over time
-g1 <- ggplot(data = filter(df_summarise, max_coverage == 0), aes(x = as.Date(date), y = deaths_t/target_pop * 1e6)) +
+g1 <- ggplot(data = filter(df_summarise, max_coverage == 0), aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = ab_model_infection)) +
   geom_line() +
   facet_wrap(~income_group) +
   theme_bw() +
@@ -75,7 +75,7 @@ ggsave("plots/scenario2_cumulative_doses.png", height = 12, width = 8)
 # show recovered over time
 df3 <- df_summarise %>%
   filter(max_coverage == 0)
-g3 <- ggplot(data = df3, aes(x = as.Date(date), y = prop_R)) +
+g3 <- ggplot(data = df3, aes(x = as.Date(date), y = prop_R, col = ab_model_infection)) +
   facet_wrap(~income_group) +
   geom_line()+
   theme_bw() +

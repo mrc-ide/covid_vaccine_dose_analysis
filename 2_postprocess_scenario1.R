@@ -17,7 +17,7 @@ df <- df %>%
 
 # summarise totals over repetitions
 df <- df %>%
-  group_by(income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, strategy_name) %>%
+  group_by(income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, strategy_name, ab_model_infection) %>%
   mutate(deaths_med = median(deaths),
          deaths_lower = quantile(deaths, 0.025),
          deaths_upper = quantile(deaths, 0.975),
@@ -33,7 +33,7 @@ df_summarise_totals <- df %>%
 df_summarise <- df %>%
   unnest(cols) %>%
   select(-c(deaths, prop_R)) %>%
-  group_by(timestep, income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, deaths_med, deaths_lower, deaths_upper, prop_R_med, total_doses_med, strategy_name) %>%
+  group_by(timestep, income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, deaths_med, deaths_lower, deaths_upper, prop_R_med, total_doses_med, strategy_name, ab_model_infection) %>%
   summarise(deaths_t = median(D_count),
             deaths_tmin = quantile(D_count, 0.025),
             deaths_tmax = quantile(D_count, 0.975),
@@ -51,18 +51,25 @@ saveRDS(df_summarise, "processed_outputs/df_summarise_scenario1.rds")
 saveRDS(df_summarise_totals, "processed_outputs/df_summarise_totals_scenario1.rds")
 saveRDS(filter(df_summarise, max_coverage == 0), "processed_outputs/df_counter_scenario1.rds")
 
+###################################################################################
+# plots
+icg <- "HIC"
+
 # counterfactual over time
-g1 <- ggplot(data = filter(df_summarise, max_coverage == 0), aes(x = as.Date(date), y = deaths_t/target_pop * 1e6)) +
+g1 <- ggplot(data = filter(df_summarise, max_coverage == 0, income_group == icg), aes(x = as.Date(date), y = deaths_t/target_pop * 1e6)) +
   geom_line() +
-  facet_wrap(~income_group) +
+  facet_wrap(~ ab_model_infection, labeller = label_both) +
   theme_bw() +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
         axis.line = element_line(),
         legend.text.align = 0) +
   labs(x = "date", y = "deaths per day per million", ) +
-  ggtitle("Counterfactual epidemic")
+  ggtitle(paste0("Counterfactual epidemic: ", icg))
 g1
+
+ggsave(paste0("plots/scenario1_counterfactual_", icg, ".png"), height = 4, width = 10)
+
 
 # show total doses over time as a check
 df2 <- filter(df_summarise, max_coverage == 0.8) 
@@ -82,7 +89,7 @@ g2
 df3 <- df_summarise %>%
   filter(max_coverage == 0)
 g3 <- ggplot(data = df3, aes(x = as.Date(date), y = prop_R)) +
-  facet_wrap(~income_group) +
+  facet_wrap(ab_model_infection~income_group) +
   geom_line()+
   theme_bw() +
   theme(strip.background = element_rect(fill = NA),

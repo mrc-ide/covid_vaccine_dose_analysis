@@ -1,7 +1,9 @@
-df_summarise <- readRDS("processed_outputs/df_summarise_scenario2.rds")
+df_summarise <- readRDS("processed_outputs/df_summarise_scenario2.rds") %>%
+  filter(income_group == "HIC")
 df_summarise_totals <- readRDS("processed_outputs/df_summarise_totals_scenario2.rds")
 
 counterfactual <- df_summarise %>%
+  filter(income_group == "HIC")%>%
   filter(max_coverage == 0) %>%
   select(timestep, date, income_group, target_pop, deaths_t, deaths_tmin, deaths_tmax)
 
@@ -9,9 +11,9 @@ counterfactual <- df_summarise %>%
 ggplot(data = filter(df_summarise, timestep >= 300, max_coverage != 0), aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = vaccine_doses)) +
   geom_ribbon(data = counterfactual, aes(ymin =deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6), alpha = 0.5, fill = "grey", col = NA) +
   geom_ribbon(aes(ymin = deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = vaccine_doses), alpha = 0.3, col = NA) +
-  geom_line(data = counterfactual, aes(x = as.Date(date), y = deaths_t/target_pop * 1e6), col = "black") +
+  #geom_line(data = counterfactual, aes(x = as.Date(date), y = deaths_t/target_pop * 1e6), col = "black") +
   geom_line() +
-  facet_wrap(income_group ~ age_groups_covered) +
+  facet_wrap(ab_model_infection ~ age_groups_covered) +
   theme_bw() +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
