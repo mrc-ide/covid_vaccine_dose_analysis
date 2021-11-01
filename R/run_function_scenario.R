@@ -153,7 +153,7 @@ run_scenario <-
     
     # if we want to implement antibody model following infection
     if (ab_model_infection == TRUE){
-      parameters$mu_ab_infection <- vax_pars$mu_ab
+      parameters$mu_ab_infection <- 0.185 #vax_pars$mu_ab
     }
     
     # create variables
