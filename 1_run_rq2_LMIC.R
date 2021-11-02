@@ -13,12 +13,9 @@ library(here)
 source("R/utils.R")
 source("R/run_function_scenario.R")
 source("R/plotting_utils.R")
-source("R/vaccine_strategy.R")
-
-name <- "rq1_lmic"
 
 target_pop <- 1e6
-income_group <- c("LMIC")
+income_group <- "LMIC"
 hs_constraints <- "Present"
 dt <- 0.5
 repetition <- 1:20
@@ -26,17 +23,16 @@ vacc_start <- "1/1/2021"
 vaccine_doses <- c(2,3)
 vaccine <- "Oxford-AstraZeneca"
 max_coverage <- 0.8
-age_groups_covered <- 9
-age_groups_covered_d3 <- c(9,5)
+age_groups_covered <- c(5, 9)
 seeding_cases <- 10
 variant_fold_reduction <- 1
 dose_3_fold_increase <- 6
 vacc_per_week <- c(0.015, 0.008)
+name <- "rq2_lmic"
 ab_model_infection <- FALSE
-strategy <- "realistic"
+strategy <- "same_doses"
 period_s <- c(250, 150)
 t_period_l <- c(365, 200)
-t_d3 <- c(240, 180, 360)
 
 #### Create scenarios ##########################################################
 
@@ -47,7 +43,6 @@ scenarios <- expand_grid(income_group = income_group,
                          vaccine = vaccine,
                          max_coverage = max_coverage,
                          age_groups_covered = age_groups_covered,
-                         age_groups_covered_d3 = age_groups_covered_d3,
                          vacc_start = vacc_start,
                          dt = dt,
                          repetition = repetition,
@@ -57,10 +52,8 @@ scenarios <- expand_grid(income_group = income_group,
                          vacc_per_week = vacc_per_week,
                          ab_model_infection = ab_model_infection,
                          period_s = period_s,
-                         t_period_l = t_period_l,
-                         t_d3 = t_d3) %>%
-  filter((period_s == 250 & t_period_l == 365) | (period_s == 150 & t_period_l == 200)) %>%
-  filter((t_d3 == 240) | (t_d3 != 240 & period_s == 250 & t_period_l == 365 & vacc_per_week == 0.015))
+                         t_period_l = t_period_l) %>%
+  filter((period_s == 250 & t_period_l == 365) | (period_s == 150 & t_period_l == 200))
 
 scenarios$scenario <- 1:nrow(scenarios)
 scenarios$name <- name
@@ -70,7 +63,8 @@ nrow(scenarios)
 
 write_csv(scenarios, paste0("scenarios_", name, ".csv"))
 
-#### Run the model on cluster ###############################################
+#### OR Run the model on cluster ###############################################
+# to run on cluster instead
 # Load functions
 sources <- c("R/run_function_scenario.R", "R/utils.R", "R/vaccine_strategy.R")
 src <- conan::conan_sources(c("mrc-ide/safir", "mrc-ide/squire", "mrc-ide/nimue"))

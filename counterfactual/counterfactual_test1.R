@@ -31,7 +31,7 @@ variant_fold_reduction <- 1
 dose_3_fold_increase <- 6
 vacc_per_week <- 0.015
 name <- "counterfactual_test1"
-ab_model_infection <- TRUE
+ab_model_infection <- c(TRUE, FALSE)
 
 #### Create scenarios ##########################################################
 
@@ -84,14 +84,14 @@ nrow(scenarios)
 write_csv(scenarios, paste0("scenarios_", name, ".csv"))
 
 #### Run the model #############################################################
- plan(multicore, workers = 4)
- system.time({out <- future_pmap(scenarios, run_scenario, .progress = TRUE)})
+# plan(multicore, workers = 4)
+ #system.time({out <- future_pmap(scenarios, run_scenario, .progress = TRUE)})
 
 #### OR Run the model on cluster ###############################################
 #################################################################################
 # to run on cluster instead
 # Load functions
-sources <- c("R/run_function_scenario.R", "R/utils.R", "R/vaccine_strategy.R")
+sources <- c("counterfactual/run_function_counterfactual.R", "R/utils.R", "counterfactual/vaccine_strategy_counterfactual.R")
 src <- conan::conan_sources(c("mrc-ide/safir", "mrc-ide/squire", "mrc-ide/nimue"))
 ctx <- context::context_save("context",
                              sources = sources,
@@ -105,4 +105,4 @@ run <- didehpc::queue_didehpc(ctx, config = config)
 # run$cluster_load(nodes = FALSE)
 # Run
 runs <- run$enqueue_bulk(scenarios, run_scenario, do_call = TRUE, progress = TRUE)
-
+runs$status()

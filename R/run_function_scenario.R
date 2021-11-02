@@ -240,7 +240,7 @@ run_scenario <-
     saf_reps_summarise <- left_join(saf_reps_summarise, prop_R, by = "scenario")
     
     # Save output
-    output_address <- paste0("output_cluster_", name, "/scenario_", scenario, ".rds")
+    output_address <- paste0("raw_outputs/output_", name, "/scenario_", scenario, ".rds")
     saveRDS(saf_reps_summarise, output_address)
 
   }
