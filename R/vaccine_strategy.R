@@ -31,15 +31,15 @@ get_vaccine_strategy <- function(strategy, days_to_vacc_start, doses_per_day, ti
       
     if (days_to_vacc < 28) {days_to_vacc = 28}
     
-    if (days_to_vacc >= (t_d3 + 28)) {t_d3 = days_to_vacc}
+    if (days_to_vacc + 28 >= (t_d3)) {t_d3 = days_to_vacc + 28}
       
       vaccine_set <- c(rep(0, days_to_vacc_start),
                        rep(doses_per_day/2, 28),
-                       rep(doses_per_day, floor(days_to_vacc - 28)),
+                       rep(doses_per_day, days_to_vacc - 28),
                        rep(doses_per_day/2, 28),
-                       rep(0, t_d3 + 28 - days_to_vacc + 28),
+                       rep(0, t_d3 - days_to_vacc + 28),
                        rep(doses_per_day/2, days_to_boost),
-                       rep(0, time_period - days_to_vacc_start - t_d3 - 28 - 56 - days_to_boost))
+                       rep(0, time_period - days_to_vacc_start - t_d3 - 28 -28 -  days_to_boost))
       
       vaccine_coverage_strategy <- list()
       

@@ -1,0 +1,17 @@
+income_group,target_pop,hs_constraints,vaccine_doses,vaccine,max_coverage,age_groups_covered,vacc_start,dt,repetition,seeding_cases,variant_fold_reduction,dose_3_fold_increase,vacc_per_week,ab_model_infection,period_s,t_period_l,scenario,name,strategy
+LMIC,1000000,Present,2,Oxford-AstraZeneca,0.8,5,1/1/2021,1,1,10,1,6,0.015,FALSE,250,365,1,rq2_lmic_age,same_doses
+LMIC,1000000,Present,2,Oxford-AstraZeneca,0.8,5,1/1/2021,1,1,10,1,6,0.015,FALSE,150,200,2,rq2_lmic_age,same_doses
+LMIC,1000000,Present,2,Oxford-AstraZeneca,0.8,5,1/1/2021,1,1,10,1,6,0.01,FALSE,250,365,3,rq2_lmic_age,same_doses
+LMIC,1000000,Present,2,Oxford-AstraZeneca,0.8,5,1/1/2021,1,1,10,1,6,0.01,FALSE,150,200,4,rq2_lmic_age,same_doses
+LMIC,1000000,Present,2,Oxford-AstraZeneca,0.8,9,1/1/2021,1,1,10,1,6,0.015,FALSE,250,365,5,rq2_lmic_age,same_doses
+LMIC,1000000,Present,2,Oxford-AstraZeneca,0.8,9,1/1/2021,1,1,10,1,6,0.015,FALSE,150,200,6,rq2_lmic_age,same_doses
+LMIC,1000000,Present,2,Oxford-AstraZeneca,0.8,9,1/1/2021,1,1,10,1,6,0.01,FALSE,250,365,7,rq2_lmic_age,same_doses
+LMIC,1000000,Present,2,Oxford-AstraZeneca,0.8,9,1/1/2021,1,1,10,1,6,0.01,FALSE,150,200,8,rq2_lmic_age,same_doses
+LMIC,1000000,Present,3,Oxford-AstraZeneca,0.8,5,1/1/2021,1,1,10,1,6,0.015,FALSE,250,365,9,rq2_lmic_age,same_doses
+LMIC,1000000,Present,3,Oxford-AstraZeneca,0.8,5,1/1/2021,1,1,10,1,6,0.015,FALSE,150,200,10,rq2_lmic_age,same_doses
+LMIC,1000000,Present,3,Oxford-AstraZeneca,0.8,5,1/1/2021,1,1,10,1,6,0.01,FALSE,250,365,11,rq2_lmic_age,same_doses
+LMIC,1000000,Present,3,Oxford-AstraZeneca,0.8,5,1/1/2021,1,1,10,1,6,0.01,FALSE,150,200,12,rq2_lmic_age,same_doses
+LMIC,1000000,Present,3,Oxford-AstraZeneca,0.8,9,1/1/2021,1,1,10,1,6,0.015,FALSE,250,365,13,rq2_lmic_age,same_doses
+LMIC,1000000,Present,3,Oxford-AstraZeneca,0.8,9,1/1/2021,1,1,10,1,6,0.015,FALSE,150,200,14,rq2_lmic_age,same_doses
+LMIC,1000000,Present,3,Oxford-AstraZeneca,0.8,9,1/1/2021,1,1,10,1,6,0.01,FALSE,250,365,15,rq2_lmic_age,same_doses
+LMIC,1000000,Present,3,Oxford-AstraZeneca,0.8,9,1/1/2021,1,1,10,1,6,0.01,FALSE,150,200,16,rq2_lmic_age,same_doses

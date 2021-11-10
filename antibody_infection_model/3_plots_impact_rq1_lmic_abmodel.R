@@ -19,11 +19,10 @@ df0_both <- rbind(df0_pre_vacc, df0_post_vacc)
 m <- unique(df0_both$strategy_name)
 df0_both <- df0_both %>%
   mutate(strategy_name = factor(strategy_name, levels = m[c(1,3,2,4)]))
+
 # plot total doses over time
 p0 <- ggplot(data = df0, aes(x = as.Date(date), y  = vaccines_t/target_pop, col = strategy_name)) +
   geom_line(size = 1) +
-  #facet_wrap(~t_d3, nrow = 3)+
-  #lims(x = c(as.Date("2020-01-01"), as.Date("2023-01-01"))) +
   theme_bw() +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
@@ -37,7 +36,6 @@ p0
 p1 <- ggplot(data = df0_both, aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = strategy_name)) +
   geom_ribbon(aes(ymin =deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = strategy_name), alpha = 0.5, col = NA) +
   geom_line() +
- # facet_wrap(~t_d3, nrow = 3)+
   theme_bw() +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),

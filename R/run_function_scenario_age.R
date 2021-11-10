@@ -1,5 +1,5 @@
 # main running function
-run_scenario <- 
+run_scenario_age <- 
   function(scenario = 1,
            target_pop = 1e6,
            income_group = "HIC",
@@ -164,6 +164,10 @@ run_scenario <-
       # creates the categorical states and ages for the simulated population
       variables <- create_variables(pop = pop, parameters = parameters)
       variables <- create_vaccine_variables(variables = variables, parameters = parameters)
+
+
+      comp_render <- Render$new(timesteps = 1)
+      
       
       if (ab_model_infection == TRUE){
         variables <- create_natural_immunity_variables(variables = variables, parameters = parameters)
@@ -179,16 +183,20 @@ run_scenario <-
       }
       
       # renderer object is made
-      renderer <- individual::Render$new(parameters$time_period)
-      vaxx_renderer <- individual::Render$new(parameters$time_period)
+      age_renderer <- individual::Render$new(parameters$time_period)
       
       # processes
       processes <- list(
         vaccine_ab_titre_process(parameters = parameters,variables = variables,events = events, dt = dt),
         vaccination_process(parameters = parameters,variables = variables,events = events, dt = dt),
         infection_process_vaccine_cpp(parameters = parameters,variables = variables,events = events, dt = dt),
-        categorical_count_renderer_process_daily(renderer = renderer, variable = variables$states, categories = variables$states$get_categories(),dt = dt),
-        integer_count_render_process_daily(renderer = vaxx_renderer, variable = variables$dose_num, margin = 1:4, dt = dt)
+        compartments_age_render_process_daily(
+          renderer = age_renderer,
+          age = ??,
+          compartments = ??,
+          parameters = parameters,
+          dt = dt
+        )
       )
       
       # schedule events for individuals at initialisation
@@ -205,12 +213,10 @@ run_scenario <-
         variables_dont_update = c("discrete_age", "phase"),
         progress = FALSE
       )
-      df <- renderer$to_dataframe()
-      df_vacc <- vaxx_renderer$to_dataframe()
-      df <- left_join(df, df_vacc, by = c("timestep"))
-      df_rt <- as.data.frame(rt_out) %>%
-        rename("timestep" = "Rt_tt")
-      df <- left_join(df, df_rt, by = c("timestep"))
+
+      df <- age_render$to_dataframe()
+      df <- df[, -1]
+      
       
     # summarise
     saf_reps_summarise <- df %>%

@@ -1,7 +1,7 @@
 # join the runs and link to parameters
-scenarios <- read_csv("scenarios_rq2_lmic.csv", show_col_types = FALSE)
-df <- list.files(path = "raw_outputs/output_rq2_lmic/", pattern = ".rds")
-df <- map(paste0("raw_outputs/output_rq2_lmic/", df), readRDS)
+scenarios <- read_csv("antibody_infection_model/scenarios_rq2_lmic_abmodel.csv", show_col_types = FALSE)
+df <- list.files(path = "raw_outputs/output_rq2_lmic_abmodel/", pattern = ".rds")
+df <- map(paste0("raw_outputs/output_rq2_lmic_abmodel/", df), readRDS)
 df <- do.call(rbind,df)
 df <- left_join(df, scenarios, by = "scenario") %>%
   mutate(vaccine_doses = if_else(max_coverage == 0, 0, vaccine_doses)) %>%
@@ -42,5 +42,5 @@ df_summarise <- df %>%
   unique() %>%
   mutate(date = timestep + as.Date("2020-02-01"))
 
-saveRDS(df_summarise, "processed_outputs/df_summarise_rq2_lmic.rds")
-saveRDS(df_summarise_totals, "processed_outputs/df_summarise_totals_rq2_lmic.rds")
+saveRDS(df_summarise, "processed_outputs/ab_infection_model/df_summarise_rq2_lmic_abmodel.rds")
+saveRDS(df_summarise_totals, "processed_outputs/ab_infection_model/df_summarise_totals_rq2_lmic_abmodel.rds")

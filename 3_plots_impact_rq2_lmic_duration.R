@@ -1,6 +1,6 @@
 
-df_summarise <- readRDS("processed_outputs/df_summarise_rq2_lmic.rds")
-df_summarise_totals <- readRDS("processed_outputs/df_summarise_totals_rq2_lmic.rds")
+df_summarise <- readRDS("processed_outputs/df_summarise_rq2_lmic_dur_R.rds")
+df_summarise_totals <- readRDS("processed_outputs/df_summarise_totals_rq2_lmic_dur_R.rds")
 
 # plot outputs: total vaccinated over time
 g0 <- ggplot(data = filter(df_summarise, waning == "Default", vaccine_doses == "3 doses"), aes(x = as.Date(date), y  = vaccines_t/target_pop, linetype = rollout_rate, col = age_groups_covered)) +
@@ -61,4 +61,4 @@ library(patchwork)
 combined <- g0 + guide_area() + g1  + g2 + plot_annotation(tag_levels = "A")+ plot_layout(guides = "collect") + plot_layout(widths = c(2,1), heights = c(1,2))
 combined
 
-ggsave("plots/impact_rq2_lmic.png", height = 10, width = 10)
+ggsave("plots/impact_rq2_lmic_dur_R.png", height = 10, width = 10)

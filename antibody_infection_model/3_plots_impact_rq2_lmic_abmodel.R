@@ -1,6 +1,19 @@
+df_summarise <- readRDS("processed_outputs/ab_infection_model/df_summarise_rq2_lmic_abmodel.rds")
+df_summarise_totals <- readRDS("processed_outputs/ab_infection_model/df_summarise_totals_rq2_lmic_abmodel.rds")
 
-df_summarise <- readRDS("processed_outputs/df_summarise_rq2_lmic.rds")
-df_summarise_totals <- readRDS("processed_outputs/df_summarise_totals_rq2_lmic.rds")
+# get the pre-vacc period
+df0 <- df_summarise %>%
+  filter(waning == "Default", rollout_rate == "Default")
+
+df0_pre_vacc <- df0 %>%
+  filter(date <= as.Date("2021-01-01")) %>%
+  filter(vaccine_doses == "2 doses") %>%
+  mutate(vaccine_doses = "Pre-vaccine introduction")
+
+df0_post_vacc <- df0 %>%
+  filter(date >= as.Date("2021-01-01"))
+
+df0_both <- rbind(df0_pre_vacc, df0_post_vacc)
 
 # plot outputs: total vaccinated over time
 g0 <- ggplot(data = filter(df_summarise, waning == "Default", vaccine_doses == "3 doses"), aes(x = as.Date(date), y  = vaccines_t/target_pop, linetype = rollout_rate, col = age_groups_covered)) +
@@ -17,7 +30,7 @@ g0 <- ggplot(data = filter(df_summarise, waning == "Default", vaccine_doses == "
 g0
 
 # plot outputs: deaths
-g1 <- ggplot(data = filter(df_summarise, timestep >= 300, rollout_rate == "Default", waning == "Default"), aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = vaccine_doses)) +
+g1 <- ggplot(data = df0_both, aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = vaccine_doses)) +
   geom_ribbon(aes(ymin = deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = vaccine_doses), alpha = 0.5, col = NA) +
   geom_line() +
   facet_wrap( ~ age_groups_covered, nrow = 2) +
@@ -52,8 +65,8 @@ g2 <- ggplot(data = df2, aes(x = sensitivity_scenario, y = deaths_med/target_pop
         legend.text.align = 0,
         axis.text.x = element_text(angle = 335, vjust = 0.5, hjust=0),
         legend.position = "none"
-        )
-  
+  )
+
 g2
 
 # combine plots
@@ -61,4 +74,4 @@ library(patchwork)
 combined <- g0 + guide_area() + g1  + g2 + plot_annotation(tag_levels = "A")+ plot_layout(guides = "collect") + plot_layout(widths = c(2,1), heights = c(1,2))
 combined
 
-ggsave("plots/impact_rq2_lmic.png", height = 10, width = 10)
+ggsave("plots/impact_rq2_lmic_abmodel.png", height = 10, width = 10)

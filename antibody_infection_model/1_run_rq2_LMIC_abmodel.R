@@ -11,8 +11,9 @@ library(zoo)
 library(here)
 
 source("R/utils.R")
-source("R/run_function_scenario.R")
+source("antibody_infection_model/run_function_abmodel.R")
 source("R/plotting_utils.R")
+source("R/vaccine_strategy.R")
 
 target_pop <- 1e6
 income_group <- "LMIC"
@@ -28,7 +29,7 @@ seeding_cases <- 10
 variant_fold_reduction <- 1
 dose_3_fold_increase <- 6
 vacc_per_week <- c(0.015, 0.01)
-name <- "rq2_lmic"
+name <- "rq2_lmic_abmodel"
 ab_model_infection <- FALSE
 strategy <- "same_doses"
 period_s <- c(250, 150)
@@ -61,12 +62,12 @@ scenarios$strategy <- strategy
 
 nrow(scenarios)
 
-write_csv(scenarios, paste0("scenarios_", name, ".csv"))
+write_csv(scenarios, paste0("antibody_infection_model/scenarios_", name, ".csv"))
 
 #### OR Run the model on cluster ###############################################
 # to run on cluster instead
 # Load functions
-sources <- c("R/run_function_scenario.R", "R/utils.R", "R/vaccine_strategy.R")
+sources <- c("antibody_infection_model/run_function_abmodel.R", "R/utils.R", "R/vaccine_strategy.R")
 src <- conan::conan_sources(c("mrc-ide/safir", "mrc-ide/squire", "mrc-ide/nimue"))
 ctx <- context::context_save("context",
                              sources = sources,
