@@ -4,7 +4,7 @@ library(lubridate)
 df_summarise <- readRDS("processed_outputs/df_summarise_rq2_lmic.rds")
 
 df1 <- filter(df_summarise, max_coverage == 0.8) %>%
-  rename("Dose 1" = "dose1_t", "Dose 2" = "dose2_t", "Dose 3" = "dose3_t")
+  rename("Dose 1" = "dose1_t", "Dose 2" = "dose2_t", "Dose 3" = "dose3_t") %>%
   filter(rollout_rate == "Default",
          waning == "Default")
 

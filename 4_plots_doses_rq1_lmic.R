@@ -37,6 +37,6 @@ p2 <- ggplot(data = filter(df1_vacc_month, income_group %in% c("LMIC", "LIC")), 
   labs(x = "Time (year)", y = "Vaccinated .(%)", fill = "Dose number")
 p2
 
-ggsave("plots/rq1_doses_lmic.png", height = 5, width = 10)
+ggsave("plots/rq1_doses_lmic.png", height = 5, width = 12)
 
 

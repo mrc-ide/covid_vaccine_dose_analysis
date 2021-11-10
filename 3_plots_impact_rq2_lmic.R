@@ -75,4 +75,4 @@ library(patchwork)
 combined <- g0 + guide_area() + g1  + g2 + plot_annotation(tag_levels = "A")+ plot_layout(guides = "collect") + plot_layout(widths = c(2,1), heights = c(1,2))
 combined
 
-ggsave("plots/impact_rq2_lmic.png", height = 10, width = 10)
+ggsave("plots/impact_rq2_lmic.png", height = 10, width = 12)

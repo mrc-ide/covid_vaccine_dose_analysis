@@ -70,4 +70,4 @@ p0 <- p0 + theme(legend.position = "none")
 p2 <- p2 + theme(legend.position = "none")
 combined <- p0 / p2 + p1 + guide_area() + plot_annotation(tag_levels = "A")+ plot_layout(guides = "collect") + plot_layout(widths = c(2,1)) + plot_layout(ncol = 2, nrow = 2)
 combined
-ggsave("plots/plots_impact_rq1_lmic_abmodel.png", height = 8, width = 10)
+ggsave("plots/plots_impact_rq1_lmic_abmodel.png", height = 10, width = 12)
