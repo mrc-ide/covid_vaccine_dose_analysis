@@ -21,19 +21,19 @@ hs_constraints <- "Present"
 dt <- 0.5
 repetition <- 1:20
 vacc_start <- "1/1/2021"
-vaccine_doses <- c(2,3)
+vaccine_doses <- 2
 vaccine <- "Oxford-AstraZeneca"
-max_coverage <- 0.8
-age_groups_covered <- c(5, 9)
+max_coverage <- 0
+age_groups_covered <- 5
 seeding_cases <- 10
 variant_fold_reduction <- 1
 dose_3_fold_increase <- 6
-vacc_per_week <- c(0.015, 0.01)
-name <- "rq2_lmic_abmodel"
+vacc_per_week <- 0.015
+name <- "counter_lmic_abmodel"
 ab_model_infection <- TRUE
 strategy <- "same_doses"
-period_s <- c(250, 150)
-t_period_l <- c(365, 200)
+period_s <- 250
+t_period_l <- 365
 
 #### Create scenarios ##########################################################
 
