@@ -79,5 +79,5 @@ run <- didehpc::queue_didehpc(ctx, config = config)
 # Summary of all available clusters
 # run$cluster_load(nodes = FALSE)
 # Run
-runs <- run$enqueue_bulk(scenarios, run_scenario, do_call = TRUE, progress = TRUE)
+runs <- run$enqueue_bulk(scenarios, run_scenario_age, do_call = TRUE, progress = TRUE)
 

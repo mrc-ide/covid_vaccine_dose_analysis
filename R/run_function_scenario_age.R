@@ -166,7 +166,7 @@ run_scenario_age <-
       variables <- create_vaccine_variables(variables = variables, parameters = parameters)
 
 
-      comp_render <- Render$new(timesteps = 1)
+      comp_render <- individual::Render$new(timesteps = 1)
       
       
       if (ab_model_infection == TRUE){
@@ -192,8 +192,8 @@ run_scenario_age <-
         infection_process_vaccine_cpp(parameters = parameters,variables = variables,events = events, dt = dt),
         compartments_age_render_process_daily(
           renderer = age_renderer,
-          age = ??,
-          compartments = ??,
+          age = variables$discrete_age,
+          compartments = variables$states,
           parameters = parameters,
           dt = dt
         )
@@ -214,40 +214,30 @@ run_scenario_age <-
         progress = FALSE
       )
 
-      df <- age_render$to_dataframe()
-      df <- df[, -1]
-      
-      
-    # summarise
-    saf_reps_summarise <- df %>%
-      mutate(IMild_count = IMild_count + IAsymp_count) %>%
-      select(-IAsymp_count) %>%
-      pivot_longer(cols = contains(c("count", "Rt")), names_to = "compartment") %>%
-      filter(compartment %in% c("D_count", "X1_count", "X2_count", "X3_count", "R_count", "IMild_count", "ICase_count", "Rt")) %>%
-      group_by(compartment) %>%
-      mutate(value = if_else(compartment == "D_count", value - lag(value), value),
-             value = if_else(is.na(value), 0, value)) %>%
-      ungroup() %>%
-      pivot_wider(id_cols = timestep, names_from = "compartment", values_from = "value")  %>%
-      mutate(deaths = sum(D_count[timestep >= days_to_vacc_start]),
-             doses = X1_count + X2_count * 2 + X3_count * 3,
-             total_doses = max(doses)) %>%
-      ungroup() %>%
-      nest(cols = c(timestep, D_count, X1_count, X2_count, X3_count, R_count, IMild_count, ICase_count, doses, Rt)) %>%
-      mutate(scenario = scenario)
-    
-    # get prop in Recovered when vaccination starts
-    prop_R <- df %>%
-      select(timestep, R_count) %>%
-      filter(timestep == days_to_vacc_start) %>%
-      mutate(prop_R = round(R_count/target_pop * 100,2)) %>%
-      select(prop_R) %>%
-      mutate(scenario = scenario)
-    
-    saf_reps_summarise <- left_join(saf_reps_summarise, prop_R, by = "scenario")
-    
+        tmp <- as.data.table(age_renderer$to_dataframe())
+        tmp <- melt(tmp,id.vars="timestep")
+        tmp1 <- tmp[, tstrsplit(variable, "_", keep = c(2, 4))]
+        tmp[ , variable := NULL]
+        tmp <- cbind(tmp, tmp1)
+        setnames(x = tmp,old = c("V1", "V2"),new = c("compartment","age"))
+        compartment_dt <- tmp[, .(value = sum(value)), by = .(compartment, timestep)]
+        
+  df <- as.data.frame(tmp) %>%
+    filter(compartment %in% c("D")) %>%
+    mutate(value = as.double(value)) %>%
+    group_by(compartment, age) %>%
+    mutate(value = if_else(compartment == "D", value - lag(value), value),
+           value = if_else(is.na(value), 0, value)) %>%
+    ungroup() %>%
+    pivot_wider(id_cols = c(timestep, age), names_from = "compartment", values_from = "value")  %>%
+    group_by(age) %>%
+    mutate(deaths = sum(D[timestep >= days_to_vacc_start])) %>%
+    ungroup() %>%
+    nest(cols = c(timestep, D)) %>%
+    mutate(scenario = scenario)
+  
     # Save output
     output_address <- paste0("raw_outputs/output_", name, "/scenario_", scenario, ".rds")
-    saveRDS(saf_reps_summarise, output_address)
+    saveRDS(df, output_address)
 
   }
