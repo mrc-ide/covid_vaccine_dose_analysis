@@ -1,5 +1,5 @@
-df_summarise <- readRDS("processed_outputs/ab_infection_model/df_summarise_rq1_lmic_abmodel.rds")
-df_summarise_totals <- readRDS("processed_outputs/ab_infection_model/df_summarise_totals_rq1_lmic_abmodel.rds")
+df_summarise <- readRDS("processed_outputs/ab_infection_model/df_summarise_rq1_lmic_abmodel_1.rds")
+df_summarise_totals <- readRDS("processed_outputs/ab_infection_model/df_summarise_totals_rq1_lmic_abmodel_1.rds")
 
 df0 <- df_summarise %>%
   filter(period_s == 250,
@@ -70,4 +70,4 @@ p0 <- p0 + theme(legend.position = "none")
 p2 <- p2 + theme(legend.position = "none")
 combined <- p0 / p2 + p1 + guide_area() + plot_annotation(tag_levels = "A")+ plot_layout(guides = "collect") + plot_layout(widths = c(2,1)) + plot_layout(ncol = 2, nrow = 2)
 combined
-ggsave("plots/plots_impact_rq1_lmic_abmodel.png", height = 10, width = 12)
+ggsave("plots/plots_impact_rq1_lmic_abmodel_1.png", height = 10, width = 12)
