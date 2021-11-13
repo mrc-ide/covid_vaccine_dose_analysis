@@ -70,7 +70,7 @@ sources <- c("R/run_function_scenario_age.R", "R/utils.R", "R/vaccine_strategy.R
 src <- conan::conan_sources(c("mrc-ide/safir", "mrc-ide/squire", "mrc-ide/nimue"))
 ctx <- context::context_save("context",
                              sources = sources,
-                             packages = c("tibble", "dplyr", "tidyr", "countrycode", "safir", "nimue", "squire"),
+                             packages = c("tibble", "dplyr", "tidyr", "countrycode", "safir", "nimue", "squire", "data.table"),
                              package_sources = src)
 
 config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--didemrchnb")

@@ -1,5 +1,5 @@
-df_summarise <- readRDS("processed_outputs/ab_infection_model/df_summarise_rq2_lmic_abmodel.rds")
-df_summarise_totals <- readRDS("processed_outputs/ab_infection_model/df_summarise_totals_rq2_lmic_abmodel.rds")
+df_summarise <- readRDS("processed_outputs/ab_infection_model/df_summarise_rq2_lmic_abmodel_1.rds")
+df_summarise_totals <- readRDS("processed_outputs/ab_infection_model/df_summarise_totals_rq2_lmic_abmodel_1.rds")
 
 # get the pre-vacc period
 df0 <- df_summarise %>%
@@ -74,4 +74,4 @@ library(patchwork)
 combined <- g0 + guide_area() + g1  + g2 + plot_annotation(tag_levels = "A")+ plot_layout(guides = "collect") + plot_layout(widths = c(2,1), heights = c(1,2))
 combined
 
-ggsave("plots/impact_rq2_lmic_abmodel.png", height = 10, width = 12)
+ggsave("plots/impact_rq2_lmic_abmodel_1.png", height = 10, width = 12)

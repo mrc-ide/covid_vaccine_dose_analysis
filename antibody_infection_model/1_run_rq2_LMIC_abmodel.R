@@ -29,7 +29,7 @@ seeding_cases <- 10
 variant_fold_reduction <- 1
 dose_3_fold_increase <- 6
 vacc_per_week <- c(0.015, 0.01)
-name <- "rq2_lmic_abmodel"
+name <- "rq2_lmic_abmodel_1"
 ab_model_infection <- TRUE
 strategy <- "same_doses"
 period_s <- c(250, 150)

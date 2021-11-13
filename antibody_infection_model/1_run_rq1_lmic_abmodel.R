@@ -15,7 +15,7 @@ source("antibody_infection_model/run_function_abmodel.R")
 source("R/plotting_utils.R")
 source("R/vaccine_strategy.R")
 
-name <- "rq1_lmic_abmodel"
+name <- "rq1_lmic_abmodel_1"
 
 target_pop <- 1e6
 income_group <- c("LMIC")
