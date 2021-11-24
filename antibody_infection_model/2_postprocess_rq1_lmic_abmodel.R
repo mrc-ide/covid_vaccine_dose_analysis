@@ -1,7 +1,7 @@
 # join the runs and link to parameters
-scenarios <- read_csv("antibody_infection_model/scenarios_rq1_lmic_abmodel.csv", show_col_types = FALSE)
-df <- list.files(path = "raw_outputs/output_rq1_lmic_abmodel/", pattern = ".rds")
-df <- map(paste0("raw_outputs/output_rq1_lmic_abmodel/", df), readRDS)
+scenarios <- read_csv("antibody_infection_model/scenarios_rq1_lmic_abmodel_1.csv", show_col_types = FALSE)
+df <- list.files(path = "raw_outputs/output_rq1_lmic_abmodel_1/", pattern = ".rds")
+df <- map(paste0("raw_outputs/output_rq1_lmic_abmodel_1/", df), readRDS)
 df <- do.call(rbind,df)
 df <- left_join(df, scenarios, by = "scenario") 
 
@@ -79,5 +79,5 @@ df_summarise_since_boost <- df_summarise_since_boost %>%
 
 df_summarise_totals <- left_join(df_summarise_totals, df_summarise_since_boost)
 
-saveRDS(df_summarise, "processed_outputs/ab_infection_model/df_summarise_rq1_lmic_abmodel.rds")
-saveRDS(df_summarise_totals, "processed_outputs/ab_infection_model/df_summarise_totals_rq1_lmic_abmodel.rds")
+saveRDS(df_summarise, "processed_outputs/ab_infection_model/df_summarise_rq1_lmic_abmodel_1.rds")
+saveRDS(df_summarise_totals, "processed_outputs/ab_infection_model/df_summarise_totals_rq1_lmic_abmodel_1.rds")

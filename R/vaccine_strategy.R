@@ -1,9 +1,21 @@
-get_vaccine_strategy <- function(strategy, days_to_vacc_start, doses_per_day, time_period, max_coverage, age_groups_covered, age_groups_covered_d3 = NA, vaccine_doses, pop, vacc_per_week, t_d3){
+get_vaccine_strategy <- function(strategy, days_to_vacc_start, doses_per_day, time_period, max_coverage, age_groups_covered, age_groups_covered_d3 = NA, vaccine_doses, pop, vacc_per_week, t_d3, t_10y_start){
   
   if (strategy == "realistic") {
     
-    # now we want to simulate a country having vaccinated all of the eligible population with the first and second dose (15 years + ) before switching to a booster dose
+    # now we want to simulate a country having vaccinated all of the eligible population with the first and second dose before switching to a booster dose
     vaccine_set <- c(rep(0, days_to_vacc_start), rep(doses_per_day, time_period - days_to_vacc_start))
+    
+    # if vaccinating children < 10 years, want to wait until 1 Jan 2022
+    if (age_groups_covered >= 16){
+      # how many days to vaccinate population >10 years with 2 doses?
+      population_10y <- sum(pop$n[3:17]) / sum(pop$n)
+      days_vacc_10y <- floor(population_10y / (vacc_per_week/7) * max_coverage * 2)
+      vaccine_set <- c(rep(0, days_to_vacc_start),
+                       rep(doses_per_day, days_vacc_10y),
+                       rep(0, t_10y_start - days_to_vacc_start - days_vacc_10y),
+                       rep(doses_per_day, time_period - t_10y_start))
+    }
+    
     
     vaccine_coverage_strategy <- list()
     
