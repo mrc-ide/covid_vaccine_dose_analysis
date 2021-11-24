@@ -116,7 +116,7 @@ p5 <- ggplot(data = filter(df_summarise_totals,
   geom_errorbar(aes(ymin = deaths_since_22_lower/target_pop * 1e6, ymax = deaths_since_22_upper / target_pop * 1e6), position = position_dodge()) +
   facet_wrap(~transmission) +
   #scale_fill_manual(values = c(col6, col8, col1, "grey")) +
-  labs(x = "Dose scenario", y = "Total deaths per million since vaccination start", col = "Dose scenario", fill = "Dose scenario") +
+  labs(x = "Dose scenario", y = "Total deaths per million since vaccination start", col = "Dose scenariðo", fill = "Dose scenario") +
   theme_bw() +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
