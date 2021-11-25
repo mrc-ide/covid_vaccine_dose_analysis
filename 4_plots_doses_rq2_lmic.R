@@ -2,6 +2,7 @@ library(patchwork)
 library(lubridate)
 
 df_summarise <- readRDS("processed_outputs/df_summarise_rq2_lmic.rds")
+ages_covered <- 5
 
 df1 <- filter(df_summarise, max_coverage == 0.8) %>%
   rename("Dose 1" = "dose1_t", "Dose 2" = "dose2_t", "Dose 3" = "dose3_t") %>%

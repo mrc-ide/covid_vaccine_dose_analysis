@@ -11,17 +11,17 @@ library(zoo)
 library(here)
 
 source("R/utils.R")
-source("R/run_function_abmodel.R")
+source("R/run_function_abmodel_zerocovid.R")
 source("R/plotting_utils.R")
 source("R/vaccine_strategy.R")
 
-name <- "rq1_hic_abmodel"
+name <- "rq3_hic_abmodel_zerocovid"
 
 target_pop <- 1e6
 income_group <- "HIC"
-hs_constraints <- "Present"
+hs_constraints <- "Absent"
 dt <- 0.5
-repetition <- 1:5
+repetition <- 1:10
 vacc_start <- "1/1/2021"
 vaccine_doses <- c(2,3)
 vaccine <- "Pfizer"
@@ -34,9 +34,16 @@ dose_3_fold_increase <- 6
 vacc_per_week <- 0.05
 ab_model_infection <- TRUE
 strategy <- "realistic"
-period_s <- c(250, 150)
-t_period_l <- c(365, 200)
-t_d3 <- c(180, 240, 360)
+period_s <- 250#c(250, 150)
+t_period_l <- 365#c(365, 200)
+t_d3 <- 180
+mu_ab_infection <- 1
+
+# how many days to reach 80% vaccinated with 2 doses, at 5% vacc per dose per week?
+days <- floor(0.8 / (vacc_per_week/7))*2 + 28
+d1 <- as.Date(x = (as.Date("1/1/2021", format = "%m/%d/%Y") + days), format = "%m/%d/%Y")
+
+R0_t3_in <- c("9/1/2021", "12/1/2021", "3/1/2022")
 
 #### Create scenarios ##########################################################
 
@@ -58,7 +65,9 @@ scenarios <- expand_grid(income_group = income_group,
                          ab_model_infection = ab_model_infection,
                          period_s = period_s,
                          t_period_l = t_period_l,
-                         t_d3 = t_d3) %>%
+                         t_d3 = t_d3,
+                         mu_ab_infection = mu_ab_infection,
+                         R0_t3_in = R0_t3_in) %>%
   filter((period_s == 250 & t_period_l == 365) | (period_s == 150 & t_period_l == 200)) %>%
   filter((t_d3 == 180) | (t_d3 != 180 & period_s == 250 & t_period_l == 365)) %>%
   filter((vaccine_doses == 2 & age_groups_covered_d3 == 5 ) | (vaccine_doses == 3) ) %>%
@@ -74,7 +83,7 @@ write_csv(scenarios, paste0("scenarios_", name, ".csv"))
 
 #### Run the model on cluster ###############################################
 # Load functions
-sources <- c("R/run_function_abmodel.R", "R/utils.R", "R/vaccine_strategy.R")
+sources <- c("R/run_function_abmodel_zerocovid.R", "R/utils.R", "R/vaccine_strategy.R")
 src <- conan::conan_sources(c("mrc-ide/safir", "mrc-ide/squire", "mrc-ide/nimue"))
 ctx <- context::context_save("context",
                              sources = sources,
