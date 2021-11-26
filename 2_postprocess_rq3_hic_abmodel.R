@@ -10,7 +10,7 @@ df <- left_join(df, scenarios, by = "scenario")
 # name the options
 df <- df %>%
   mutate(strategy_name = 
-           if_else(vaccine_doses == 2 & age_groups_covered == 15, "10y+ 2 doses",
+           if_else(vaccine_doses == 2 & age_groups_covered == 15, "10y+ 2 doses, no booster",
                    if_else(vaccine_doses == 3 & age_groups_covered == 15 & age_groups_covered_d3 == 5, "10y+ 2 doses, booster 60y+",
                            if_else(vaccine_doses == 3 & age_groups_covered == 15 & age_groups_covered_d3 == 9, "10y+ 2 doses, booster 40y+",
                                    if_else(vaccine_doses == 3 & age_groups_covered == 15 & age_groups_covered_d3 == 13, "10y+ 2 doses, booster 20y+",
@@ -19,12 +19,12 @@ df <- df %>%
   mutate(waning = if_else(period_s == 250 & t_period_l == 365, "Default", if_else(period_s == 150 & t_period_l == 200, "Slower vaccine waning", "None"))) %>%
   mutate(dose_3_timing = if_else(t_d3 == 180, "6 months (default)",
                                  if_else(t_d3 == 240, "8 months", 
-                                         if_else(t_d3 == 360, "12 months", "NA")))) %>% mutate(Rt_lift_t = if_else(R0_t3_in == "9/1/2021", "October '21 lift", if_else(R0_t3_in == "12/1/2021", "January '22 lift", if_else(R0_t3_in == "3/1/2022", "April '22 lift", "None"))))
+                                         if_else(t_d3 == 360, "12 months", "NA")))) %>% mutate(Rt_lift_t = if_else(R0_t3_in == "8/1/2021", "Sept '21 lift", if_else(R0_t3_in == "10/1/2021", "Nov '21 lift", if_else(R0_t3_in == "2/1/2022", "Mar '22 lift", "None"))))
 
 m <- unique(df$strategy_name)
 m
-# df <- df %>%
-#   mutate(strategy_name = factor(strategy_name, levels = c(m[1], m[4], m[5], m[2], m[3]), ordered = TRUE))
+df <- df %>%
+  mutate(strategy_name = factor(strategy_name, levels = c(m[1], m[4], m[5], m[2], m[3]), ordered = TRUE))
 
 # summarise totals over repetitions
 df <- df %>%
@@ -79,34 +79,6 @@ df0_post_vacc <- df_summarise %>%
   filter(date >= as.Date("2021-01-01"))
 
 df_summarise <- rbind(df0_pre_vacc, df0_post_vacc)
-
-# calculate deaths since booster start
-df_summarise_since_boost <- df %>%
-  unnest(cols) %>%
-  select(-c(deaths, -inc, prop_R))
-
-# get date that booster starts
-time_boost_start <- df_summarise_since_boost %>%
-  filter(X3_count > 0) %>%
-  group_by(rollout_rate, waning, dose_3_timing, strategy_name) %>%
-  filter(timestep == min(timestep)) %>%
-  select(rollout_rate, waning, dose_3_timing, strategy_name, timestep) %>%
-  rename("time_since_boost" = "timestep") %>%
-  unique()
-  
-df_summarise_since_boost <- df_summarise_since_boost %>%
-  left_join(time_boost_start) %>%
-  filter(timestep >= time_since_boost) %>%
-  # calculate deaths for each repetition
-  group_by(repetition, income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, strategy_name, vacc_per_week, period_s, t_period_l, t_d3, waning, dose_3_timing, rollout_rate, Rt_lift_t) %>%
-  summarise(deaths = sum(D_count), .groups = "drop") %>%
-  group_by(income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, strategy_name, vacc_per_week, period_s, t_period_l, t_d3, waning,dose_3_timing, rollout_rate, Rt_lift_t) %>%
-  summarise(deaths_since_boost_med = median(deaths),
-         deaths_since_boost_lower = quantile(deaths, 0.025),
-         deaths_since_boost_upper = quantile(deaths, 0.975), .groups = "drop") %>%
-  ungroup() 
-
-df_summarise_totals <- left_join(df_summarise_totals, df_summarise_since_boost)
 
 saveRDS(df_summarise, paste0("processed_outputs/df_summarise_", name, ".rds"))
 saveRDS(df_summarise_totals, paste0("processed_outputs/df_summarise_totals_", name, ".rds"))

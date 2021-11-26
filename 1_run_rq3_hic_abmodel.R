@@ -40,10 +40,10 @@ t_d3 <- 180
 mu_ab_infection <- 1
 
 # how many days to reach 80% vaccinated with 2 doses, at 5% vacc per dose per week?
-days <- floor(0.8 / (vacc_per_week/7))*2 + 28
+days <- floor(0.8 / (vacc_per_week/7))*2
 d1 <- as.Date(x = (as.Date("1/1/2021", format = "%m/%d/%Y") + days), format = "%m/%d/%Y")
 
-R0_t3_in <- c("9/1/2021", "12/1/2021", "3/1/2022")
+R0_t3_in <- c("8/1/2021", "10/1/2021", "2/1/2022")
 
 #### Create scenarios ##########################################################
 
