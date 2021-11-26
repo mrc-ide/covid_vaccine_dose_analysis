@@ -59,11 +59,12 @@ g2b <- ggplot(data = df2, aes(x = Rt_lift_t, y = inc_med / target_pop * 1e6, fil
 g2b
 
 # plot doses against Rt lifting to check timing
-ggplot(data = df1, aes(x = as.Date(date), y = Rt)) +
+ggplot(data = df1, aes(x = as.Date(date), y = vaccines_t / target_pop)) +
   geom_line() +
-  geom_line(aes(x = as.Date(date), y = vaccines_t/target_pop)) +
-  facet_wrap(Rt_lift_t~strategy_name)
-
+  geom_line(aes(x = as.Date(date), y = Rt), col = "red") +
+  facet_wrap(Rt_lift_t ~ strategy_name) +
+  labs(x = "Date. Note red line shows lifting Rt", y = "Doses delivered per person")
+ggsave("plots/doses_vs_lifting_Rt_rq3.png", height = 6, width = 10)
 
 library(patchwork)
 combined <- g1 + (g2 / g2b) + 

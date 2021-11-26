@@ -10,7 +10,7 @@ df <- left_join(df, scenarios, by = "scenario")
 # name the options
 df <- df %>%
   mutate(strategy_name = 
-           if_else(vaccine_doses == 2 & age_groups_covered == 15, "10y+ 2 doses",
+           if_else(vaccine_doses == 2 & age_groups_covered == 15, "10y+ 2 doses, no booster",
                    if_else(vaccine_doses == 3 & age_groups_covered == 15 & age_groups_covered_d3 == 5, "10y+ 2 doses, booster 60y+",
                            if_else(vaccine_doses == 3 & age_groups_covered == 15 & age_groups_covered_d3 == 9, "10y+ 2 doses, booster 40y+",
                                    if_else(vaccine_doses == 3 & age_groups_covered == 15 & age_groups_covered_d3 == 13, "10y+ 2 doses, booster 20y+",
@@ -71,7 +71,7 @@ df0_pre_vacc <- df_summarise %>%
          t_d3 == 180,
          vacc_per_week == 0.05) %>%
   filter(date < as.Date("2021-01-01")) %>%
-  filter(strategy_name == "10y+ 2 doses") %>%
+  filter(strategy_name == "10y+ 2 doses, no booster") %>%
   mutate(strategy_name = "Pre-vaccine introduction",
          dose_3_timing = "Pre-vaccine introduction")
 

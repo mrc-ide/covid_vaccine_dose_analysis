@@ -39,21 +39,5 @@ summary_df <- df %>%
   ungroup() %>%
   mutate(age = as.numeric(age))
 
-x <- seq(0,80,5)
-y <- seq(4,84,5)
-z <- paste0(x,"-",y)
-z[17] <- "80+"
-
-age_plot <- ggplot(data = summary_df, aes(x = age, y= value_med, fill =strategy_name)) +
-  geom_col(position = "dodge") +
-  theme_bw() +
-  theme(strip.background = element_rect(fill = NA),
-        panel.border = element_blank(),
-        axis.line = element_line(),
-        legend.text.align = 0,
-        axis.text.x = element_text(angle = 335, vjust = 0.5, hjust=0)) +
-  labs(x = "Age", y = "Total deaths since vaccine start", fill = "Strategy") +
-  scale_x_continuous(breaks = 1:17, labels = z)
-  
-age_plot
 saveRDS(summary_df, paste0("processed_outputs/df_summarise_", name, ".rds"))
+
