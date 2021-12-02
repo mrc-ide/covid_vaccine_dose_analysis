@@ -13,6 +13,9 @@ run_scenario <-
            repetition = 1,
            seeding_cases = 10,
            variant_fold_reduction = 1,
+           vfr = 8,
+           vfr_time1 = "11/15/2021",
+           vfr_time2 = "12/31/2021",
            dose_3_fold_increase = 1,
            age_groups_covered_d3 = 14,
            vacc_per_week = 0.05,
@@ -24,6 +27,7 @@ run_scenario <-
            t_period_l = 357.6847,
            max_dose = 3,
            mu_ab_infection = 1.9,
+           std10_infection = 0.44,
            strategy = "realistic",
            max_Rt = 3){
     
@@ -160,8 +164,20 @@ run_scenario <-
       next_dose_priority_matrix = next_dose_priority
     )
     
-    parameters$mu_ab_infection <- mu_ab_infection
+    # make VFR reduction vector and attach
+    vfr_time1 <- as.Date(x = vfr_time1, format = "%m/%d/%Y")
+    vfr_time2 <- as.Date(x = vfr_time2, format = "%m/%d/%Y")
     
+    stopifnot(vfr_time1 < tmax_date)
+    stopifnot(vfr_time2 < tmax_date)
+    
+    vfr_time1_day <- as.integer(difftime(vfr_time1, R0_t0 - 1))
+    vfr_time2_day <- as.integer(difftime(vfr_time2, R0_t0 - 1))
+    
+    vfr_vector <- variant_fold_reduction_vector(parameters = parameters, dt = dt, vfr = vfr, vfr_time_1 = vfr_time1_day, vfr_time_2 = vfr_time2_day)
+    parameters <- make_immune_parameters(parameters = parameters, vfr = vfr_vector, mu_ab_infection = mu_ab_infection, std10_infection = std10_infection)
+    
+
 ######################################################
     # run the simulation
 ######################################################
