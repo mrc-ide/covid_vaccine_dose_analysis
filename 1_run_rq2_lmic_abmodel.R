@@ -19,8 +19,8 @@ name <- "rq2_lmic_abmodel"
 target_pop <- 1e6
 income_group <- "LMIC"
 hs_constraints <- "Present"
-dt <- 0.5
-repetition <- 1:20
+dt <- 0.25
+repetition <- 1:5
 vacc_start <- "1/1/2021"
 vaccine_doses <- c(2,3)
 vaccine <- "Oxford-AstraZeneca"
@@ -32,8 +32,7 @@ dose_3_fold_increase <- 6
 vacc_per_week <- c(0.02, 0.01)
 ab_model_infection <- TRUE
 strategy <- "same_doses"
-period_s <- c(250, 150)
-t_period_l <- c(365, 200)
+max_Rt <- c(3, 4)
 
 #### Create scenarios ##########################################################
 
@@ -52,9 +51,7 @@ scenarios <- expand_grid(income_group = income_group,
                          dose_3_fold_increase = dose_3_fold_increase,
                          vacc_per_week = vacc_per_week,
                          ab_model_infection = ab_model_infection,
-                         period_s = period_s,
-                         t_period_l = t_period_l) %>%
-  filter((period_s == 250 & t_period_l == 365) | (period_s == 150 & t_period_l == 200))
+                         max_Rt = max_Rt)
 
 scenarios$scenario <- 1:nrow(scenarios)
 scenarios$name <- name
@@ -74,8 +71,8 @@ ctx <- context::context_save("context",
                              packages = c("tibble", "dplyr", "tidyr", "countrycode", "safir", "nimue", "squire", "data.table"),
                              package_sources = src)
 
-#config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--didemrchnb")
-config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--dideclusthn")
+config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--didemrchnb")
+#config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--dideclusthn")
 
 # Create the queue
 run <- didehpc::queue_didehpc(ctx, config = config)

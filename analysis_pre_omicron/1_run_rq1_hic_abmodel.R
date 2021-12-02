@@ -20,7 +20,7 @@ name <- "rq1_hic_abmodel"
 target_pop <- 1e6
 income_group <- "HIC"
 hs_constraints <- "Present"
-dt <- 0.25
+dt <- 0.5
 repetition <- 1:5
 vacc_start <- "1/1/2021"
 vaccine_doses <- c(2,3)
@@ -34,9 +34,9 @@ dose_3_fold_increase <- 6
 vacc_per_week <- 0.05
 ab_model_infection <- TRUE
 strategy <- "realistic"
-t_d3 <- 180
-max_Rt <- c(3, 4)
-std10 <- c(0.44, 0.02)
+period_s <- c(250, 150)
+t_period_l <- c(365, 200)
+t_d3 <- c(180, 240, 360)
 
 #### Create scenarios ##########################################################
 
@@ -56,9 +56,11 @@ scenarios <- expand_grid(income_group = income_group,
                          dose_3_fold_increase = dose_3_fold_increase,
                          vacc_per_week = vacc_per_week,
                          ab_model_infection = ab_model_infection,
-                         t_d3 = t_d3,
-                         max_Rt = max_Rt,
-                         std10 = std10) %>%
+                         period_s = period_s,
+                         t_period_l = t_period_l,
+                         t_d3 = t_d3) %>%
+  filter((period_s == 250 & t_period_l == 365) | (period_s == 150 & t_period_l == 200)) %>%
+  filter((t_d3 == 180) | (t_d3 != 180 & period_s == 250 & t_period_l == 365)) %>%
   filter((vaccine_doses == 2 & age_groups_covered_d3 == 5 ) | (vaccine_doses == 3) ) %>%
   unique()
 
@@ -79,8 +81,8 @@ ctx <- context::context_save("context",
                              packages = c("tibble", "dplyr", "tidyr", "countrycode", "safir", "nimue", "squire", "data.table"),
                              package_sources = src)
 
-config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--didemrchnb")
-#config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--dideclusthn")
+#config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--didemrchnb")
+config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--dideclusthn")
 
 # Create the queue
 run <- didehpc::queue_didehpc(ctx, config = config)

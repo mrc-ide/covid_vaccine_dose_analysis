@@ -67,35 +67,31 @@ get_vaccine_pars <- function(
   vaccine = "Pfizer",
   vaccine_doses = 3,
   variant_fold_reduction = 1,
-  dose_3_fold_increase = 6,
-  ab_50 = 0.1136069,
-  ab_50_severe = 0.02370455,
+  dose_3_fold_increase = 4,
+  ab_50 = 0.2,
+  ab_50_severe = 0.03,
   std10 = 0.44,
-  k = 2.971151,
+  k = 2.94,
   t_d2 = 28,
   t_d3 = 240,
-  hl_s = 95.18442,
-  hl_l = 537.5103,
-  period_s = 115.8142,
-  t_period_l = 357.6847 
+  hl_s = 108,
+  hl_l = 3650,
+  period_s = 250,
+  t_period_l = 365
 ){
   mu_ab_list <- data.frame(name = c("Oxford-AstraZeneca", "Pfizer", "Moderna"),
-                           mu_ab_d1 = c(0.124035, 0.165712, ((185+273)/2)/321),
-                           mu_ab_d2 = c(32/59, 223/94, 654/158),
-                           fold_red_delta = c(1.99184, 3.539059, 3.539059)) %>%
-    mutate(mu_ab_d1 = mu_ab_d1 / fold_red_delta,
-           mu_ab_d2 = mu_ab_d2 / fold_red_delta) %>%
+                           mu_ab_d1 = c(0.185, 0.24, 0.38),
+                           mu_ab_d2 = c(0.45, 1.1, 2.03)) %>%
     mutate(mu_ab_d1 = mu_ab_d1/variant_fold_reduction,
            mu_ab_d2 = mu_ab_d2/variant_fold_reduction) %>%
-    mutate(mu_ab_d3 = mu_ab_d2 * dose_3_fold_increase) %>%
-      select(-fold_red_delta)
+    mutate(mu_ab_d3 = mu_ab_d2 * dose_3_fold_increase)
   
   ab_parameters <- safir::get_vaccine_ab_titre_parameters(
-    vaccine = vaccine, max_dose = vaccine_doses, correlated = FALSE,
+    vaccine = vaccine, max_dose = vaccine_doses, correlated = TRUE,
     hl_s = hl_s, hl_l = hl_l, period_s = period_s, t_period_l = t_period_l,
     ab_50 = ab_50, ab_50_severe = ab_50_severe, std10 = std10, k = k,
     mu_ab_list = mu_ab_list
   )
-  ab_parameters$max_ab <- 3 # max titre on natural log scale
+  
   return(ab_parameters) 
 }

@@ -15,28 +15,30 @@ source("R/run_function_abmodel.R")
 source("R/plotting_utils.R")
 source("R/vaccine_strategy.R")
 
-name <- "rq1_hic_abmodel"
+name <- "counterfactual_abmodel"
 
 target_pop <- 1e6
 income_group <- "HIC"
 hs_constraints <- "Present"
-dt <- 0.25
+dt <- 0.2
 repetition <- 1:5
 vacc_start <- "1/1/2021"
-vaccine_doses <- c(2,3)
+vaccine_doses <- 2
 vaccine <- "Pfizer"
 max_coverage <- 0.9
 age_groups_covered <- 15
-age_groups_covered_d3 <- c(5, 9, 13, 15)
+age_groups_covered_d3 <- 5
 seeding_cases <- 10
 variant_fold_reduction <- 1
 dose_3_fold_increase <- 6
 vacc_per_week <- 0.05
 ab_model_infection <- TRUE
 strategy <- "realistic"
+period_s <- 250
+t_period_l <- 365
 t_d3 <- 180
-max_Rt <- c(3, 4)
-std10 <- c(0.44, 0.02)
+mu_ab_infection <- c(1, 1.9)
+max_Rt = c(3, 5)
 
 #### Create scenarios ##########################################################
 
@@ -56,11 +58,11 @@ scenarios <- expand_grid(income_group = income_group,
                          dose_3_fold_increase = dose_3_fold_increase,
                          vacc_per_week = vacc_per_week,
                          ab_model_infection = ab_model_infection,
+                         period_s = period_s,
+                         t_period_l = t_period_l,
                          t_d3 = t_d3,
-                         max_Rt = max_Rt,
-                         std10 = std10) %>%
-  filter((vaccine_doses == 2 & age_groups_covered_d3 == 5 ) | (vaccine_doses == 3) ) %>%
-  unique()
+                         mu_ab_infection = mu_ab_infection,
+                         max_Rt = max_Rt)
 
 scenarios$scenario <- 1:nrow(scenarios)
 scenarios$name <- name

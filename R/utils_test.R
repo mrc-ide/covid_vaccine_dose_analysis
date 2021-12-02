@@ -68,21 +68,21 @@ get_vaccine_pars <- function(
   vaccine_doses = 3,
   variant_fold_reduction = 1,
   dose_3_fold_increase = 6,
-  ab_50 = 0.1136069,
-  ab_50_severe = 0.02370455,
+  ab_50 = 0.1479381,
+  ab_50_severe = 0.04641247,
   std10 = 0.44,
-  k = 2.971151,
+  k = 3.534442,
   t_d2 = 28,
   t_d3 = 240,
-  hl_s = 95.18442,
-  hl_l = 537.5103,
-  period_s = 115.8142,
-  t_period_l = 357.6847 
+  hl_s = 91.46787,
+  hl_l = 547.4619,
+  period_s = 78.98979,
+  t_period_l = 354.1737 
 ){
   mu_ab_list <- data.frame(name = c("Oxford-AstraZeneca", "Pfizer", "Moderna"),
-                           mu_ab_d1 = c(0.124035, 0.165712, ((185+273)/2)/321),
-                           mu_ab_d2 = c(32/59, 223/94, 654/158),
-                           fold_red_delta = c(1.99184, 3.539059, 3.539059)) %>%
+                           mu_ab_d1 = c(0.1688211, 20/94, ((185+273)/2)/321),
+                           mu_ab_d2 = c(0.2316992, 223/94, 654/158),
+                           fold_red_delta = c(1.483165, 3.211094, 3.211094)) %>%
     mutate(mu_ab_d1 = mu_ab_d1 / fold_red_delta,
            mu_ab_d2 = mu_ab_d2 / fold_red_delta) %>%
     mutate(mu_ab_d1 = mu_ab_d1/variant_fold_reduction,
@@ -96,6 +96,6 @@ get_vaccine_pars <- function(
     ab_50 = ab_50, ab_50_severe = ab_50_severe, std10 = std10, k = k,
     mu_ab_list = mu_ab_list
   )
-  ab_parameters$max_ab <- 3 # max titre on natural log scale
+  ab_parameters$max_ab <- 3
   return(ab_parameters) 
 }

@@ -15,14 +15,15 @@ run_scenario <-
            variant_fold_reduction = 1,
            dose_3_fold_increase = 1,
            age_groups_covered_d3 = 14,
-           vacc_per_week = 0.025,
+           vacc_per_week = 0.05,
            name = "scenario1",
-           ab_model_infection = FALSE,
+           ab_model_infection = TRUE,
            std10 = 0.44,
-           t_d3 = 240,
-           period_s = 250,
-           t_period_l = 365,
-           max_dose = 3, 
+           t_d3 = 180,
+           period_s = 115.8142,
+           t_period_l = 357.6847,
+           max_dose = 3,
+           mu_ab_infection = 1.9,
            strategy = "realistic",
            max_Rt = 3){
     
@@ -48,27 +49,30 @@ run_scenario <-
     # piecewise segments
     R0_t0 <- as.Date(x = "2/1/2020", format = "%m/%d/%Y")
     R0_t1 <- as.Date(x = "3/1/2020", format = "%m/%d/%Y")
-    R0_t2 <- as.Date(x = "5/1/2020", format = "%m/%d/%Y")
-    R0_t3 <- as.Date(x = "10/1/2020", format = "%m/%d/%Y")
+    #R0_t2 <- as.Date(x = "5/1/2020", format = "%m/%d/%Y")
+    R0_t2 <- as.Date(x = "4/15/2020", format = "%m/%d/%Y")
+    R0_t3 <- as.Date(x = "11/1/2020", format = "%m/%d/%Y")
     R0_t4 <- as.Date(x = "12/1/2020", format = "%m/%d/%Y")
     R0_t5 <- as.Date(x = "1/1/2021", format = "%m/%d/%Y")
     R0_t6 <- as.Date(x = "2/1/2021", format = "%m/%d/%Y")
-    R0_t7 <- as.Date(x = "6/1/2021", format = "%m/%d/%Y")
+    #R0_t7 <- as.Date(x = "6/1/2021", format = "%m/%d/%Y")
+    R0_t7 <- as.Date(x = "7/1/2021", format = "%m/%d/%Y")
+    
     R0_t8 <- as.Date(x = "12/31/2021", format = "%m/%d/%Y")
 
-    tmax_date <- as.Date(x = "3/31/2023", format = "%m/%d/%Y")
+    tmax_date <- as.Date(x = "12/31/2022", format = "%m/%d/%Y")
     time_period <- as.integer(difftime(tmax_date, R0_t0 - 1))
     # get index for 1 Jan 2022, as don't want to vacc any children <10y before this time
     t_10y_start <- as.integer(difftime(as.Date("01/01/2022", format = "%m/%d/%Y"), R0_t0-1))
     dates <- c(R0_t0, R0_t1, R0_t2, R0_t3, R0_t4, R0_t5, R0_t6, R0_t7, R0_t8)
-    rt <-    c(2.0,   2.0,   0.9,   0.9,   1.1,   1.1,   1.0,   1.0,  max_Rt)
+    rt <-    c(2.5,   2.5,   0.8,   0.8,   1.05,   1.05,   1.0,   1.0,  max_Rt)
     rt_out <- safir::interpolate_rt(dates = dates, rt = rt, max_date = tmax_date)
     
     vacc_start <- as.Date(x = vacc_start, format = "%m/%d/%Y")
     days_to_vacc_start <- as.integer(difftime(vacc_start, R0_t0))
     
     # daily per-capita prob of external infection
-    lambda_external <- rep(0.00001, time_period)
+    lambda_external <- rep(0.000001, time_period)
     
     # first pulse, spread out hazard of 0.05 over 10 days right before 2nd wave
     t_spread <- 10
@@ -78,7 +82,8 @@ run_scenario <-
     lambda_external[lambda_tt] <- lambda_external[lambda_tt] / sum(lambda_external[lambda_tt]) * 0.05
 
     # second pulse, spread out hazard of 0.01 over 20 days right before 2nd wave
-    t_spread <- 20
+    #t_spread <- 20
+    t_spread <- 10
     lambda_tt <- as.integer(difftime(R0_t7, R0_t0 - 1))
     lambda_tt <- seq(from = lambda_tt - t_spread/2, to = lambda_tt + t_spread/2, by = 1)
     lambda_external[lambda_tt] <- dnorm(x = lambda_tt, mean = lambda_tt[t_spread/2+1], sd = 3)
@@ -131,8 +136,6 @@ run_scenario <-
     t_d3 <- vaccine_out$t_d3
     
     # profiles and dosing
-
-    
     vax_pars <- get_vaccine_pars(vaccine = vaccine,
                                 variant_fold_reduction = variant_fold_reduction,
                                 dose_3_fold_increase = dose_3_fold_increase,
@@ -157,7 +160,7 @@ run_scenario <-
       next_dose_priority_matrix = next_dose_priority
     )
     
-    parameters$mu_ab_infection <- 1.0
+    parameters$mu_ab_infection <- mu_ab_infection
     
 ######################################################
     # run the simulation
@@ -165,19 +168,18 @@ run_scenario <-
     
     # create variables
     timesteps <- parameters$time_period/dt
+    
     # creates the categorical states and ages for the simulated population
     variables <- create_variables(pop = pop, parameters = parameters)
     variables <- create_vaccine_variables(variables = variables, parameters = parameters)
     variables <- create_natural_immunity_variables(variables = variables, parameters = parameters)
-      
       
     # creates the list of events and attaches listeners which handle state changes and queue future events
     events <- create_events(parameters = parameters)
     events <- create_events_vaccination(events = events, parameters = parameters)
     attach_event_listeners(variables = variables, events = events, parameters = parameters, dt = dt)
     attach_event_listeners_vaccination(variables = variables,events = events,parameters = parameters,dt = dt)
-    attach_event_listeners_natural_immunity(variables = variables, events = events, parameters = parameters, dt = dt)
-    
+    attach_event_listeners_natural_immunity(variables = variables, events = events, parameters = parameters, dt = dt, additive = TRUE)
       
     # renderer object is made
     renderer <- individual::Render$new(parameters$time_period)
@@ -186,16 +188,13 @@ run_scenario <-
     incidence_renderer <- individual::Render$new(timesteps)
     attach_tracking_listener_incidence(events=events, renderer = incidence_renderer)
     
-    
    # processes
       processes <- list(
         natural_immunity_ab_titre_process(parameters = parameters,variables = variables, dt = dt),
         vaccination_process(parameters = parameters,variables = variables,events = events, dt = dt),
         infection_process_vaccine_cpp(parameters = parameters,variables = variables,events = events, dt = dt),
         categorical_count_renderer_process_daily(renderer = renderer, variable = variables$states, categories = variables$states$get_categories(),dt = dt),
-        integer_count_render_process_daily(renderer = vaxx_renderer, variable = variables$dose_num, margin = 1:4, dt = dt)
-       
-               )
+        integer_count_render_process_daily(renderer = vaxx_renderer, variable = variables$dose_num, margin = 1:4, dt = dt))
       
       setup_events(parameters = parameters, events=events, variables = variables, dt=dt)
   
@@ -257,5 +256,4 @@ run_scenario <-
     # Save output
     output_address <- paste0("raw_outputs/output_", name, "/scenario_", scenario, ".rds")
     saveRDS(saf_reps_summarise, output_address)
-
   }

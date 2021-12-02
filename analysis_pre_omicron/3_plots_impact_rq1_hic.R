@@ -16,21 +16,28 @@ df_summarise_totals <- readRDS(paste0("processed_outputs/df_summarise_totals_", 
 m <- unique(df_summarise$strategy_name)
 m
 df_summarise <- df_summarise %>%
-  mutate(strategy_name = factor(strategy_name, levels = m, ordered = TRUE))
+  mutate(strategy_name = factor(strategy_name, levels = c(m[1], m[2], m[3], m[4], m[5], m[6]), ordered = TRUE))
 
-# df_summarise <- df_summarise %>%
-#   mutate(dose_3_timing = factor(dose_3_timing, levels = c("Pre-vaccine introduction", "6 months (default)", "8 months", "12 months")))
-# 
-# df_summarise_totals <- df_summarise_totals %>%
-#   mutate(dose_3_timing = factor(dose_3_timing, levels = c("6 months (default)", "8 months", "12 months")))
+m3 <- unique(df_summarise_totals$strategy_name)
+m3
+df_summarise_totals <- df_summarise_totals %>%
+  mutate(strategy_name = factor(strategy_name, levels = c(m3[1], m3[3], m3[4], m3[5], m3[2]), ordered = TRUE))
+
+df_summarise <- df_summarise %>%
+  mutate(dose_3_timing = factor(dose_3_timing, levels = c("Pre-vaccine introduction", "6 months (default)", "8 months", "12 months")))
+
+df_summarise_totals <- df_summarise_totals %>%
+  mutate(dose_3_timing = factor(dose_3_timing, levels = c("6 months (default)", "8 months", "12 months")))
 
 ################################
 
 # plot total doses over time
 fig_doses_time <- ggplot(data = filter(df_summarise,
+                           rollout_rate == "Default",
+                           waning == "Default",
+                           dose_3_timing == "6 months (default)",
                            strategy_name != "Pre-vaccine introduction",
-                           max_Rt == 3,
-                           std10 == 0.44), aes(x = as.Date(date), y  = vaccines_t/target_pop, col = strategy_name)) +
+                           max_Rt == 3), aes(x = as.Date(date), y  = vaccines_t/target_pop, col = strategy_name)) +
   geom_line(size = 1) +
   lims(x = c(as.Date("2020-01-01"), as.Date("2023-01-01"))) +
   theme_bw() +
@@ -46,11 +53,14 @@ fig_doses_time
 
 # plot outputs: deaths
 p_deaths <- ggplot(data = filter(df_summarise,
-                           strategy_name %in% c("Pre-vaccine introduction", "10y+ 2 doses, no booster", "10y+ 2 doses, booster 60y+", "10y+ 2 doses, booster 10y+"),
-                           max_Rt == 3)
+                           rollout_rate == "Default",
+                           waning == "Default",
+                           dose_3_timing %in% c( "6 months (default)", "Pre-vaccine introduction"),
+                           strategy_name %in% c("Pre-vaccine introduction", "10y+ 2 doses, no booster", "10y+ 2 doses, booster 60y+", "10y+ 2 doses, booster 10y+"))
              , aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = strategy_name)) +
   geom_ribbon(aes(ymin =deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = strategy_name), alpha = 0.5, col = NA) +
   geom_line() +
+  facet_wrap(~max_Rt, nrow = 2)+
   theme_bw() +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
@@ -61,25 +71,7 @@ p_deaths <- ggplot(data = filter(df_summarise,
   labs(x = "Time", y = "Daily deaths per million", col = "Dose scenario", fill = "Dose scenario")
 
 p_deaths
-ggsave("p_deaths.png", p_deaths, height = 3, width = 8)
 
-p_Rt <- ggplot(data = filter(df_summarise,
-                                 strategy_name %in% c("Pre-vaccine introduction", "10y+ 2 doses, no booster"),
-                                 max_Rt == 3)
-                   , aes(x = as.Date(date), y = Rt, col = strategy_name)) +
-  geom_line() +
-  theme_bw() +
-  theme(strip.background = element_rect(fill = NA),
-        panel.border = element_blank(),
-        axis.line = element_line(),
-        legend.text.align = 0) +
-  scale_color_manual(values = c("grey20", col_set_3)) +
-  scale_fill_manual(values = c("grey20", col_set_3)) +
-  labs(x = "Time", y = "Rt", col = "Dose scenario", fill = "Dose scenario")
-
-p_Rt
-
-ggsave("p_Rt.png", p_Rt, height = 3, width = 8)
 # barplot summary of deaths
 df2 <- df_summarise_totals %>%
   mutate(sensitivity_scenario = if_else(waning == "Default" & rollout_rate == "Default" & dose_3_timing == "6 months (default)", "Default", if_else(waning == "Default" & rollout_rate == "Slower rollout" & dose_3_timing == "6 months (default)", "Slower rollout", if_else(waning == "Slower vaccine waning" & rollout_rate == "Default" & dose_3_timing == "6 months (default)", "Slower vaccine waning", "None")))) %>%
@@ -93,8 +85,6 @@ p_deaths_summary <- ggplot(data = filter(df2, sensitivity_scenario %in% c("Defau
   scale_fill_manual(values = col_set) +
   labs(x = "Dose scenario", y = "Total deaths per million since vaccination start", col = "Dose scenario", fill = "Dose scenario") +
   theme_bw() +
-  facet_wrap(~max_Rt, nrow = 2)+
-  
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
         axis.line = element_line(),
@@ -105,14 +95,15 @@ p_deaths_summary
 
 # plot outputs: infections
 p_infections <- ggplot(data = filter(df_summarise,
-                           max_Rt ==3,
+                           rollout_rate == "Default",
+                           waning == "Default",
+                           dose_3_timing %in% c("6 months (default)", "Pre-vaccine introduction"),
                            strategy_name %in% c("Pre-vaccine introduction", "10y+ 2 doses, no booster", "10y+ 2 doses, booster 60y+", "10y+ 2 doses, booster 10y+"),
                            timestep < max(df_summarise$timestep))
              , aes(x = as.Date(date), y = inc_t/target_pop * 1e6, col = strategy_name)) +
   geom_ribbon(aes(ymin =inc_tmin/target_pop * 1e6, ymax = inc_tmax/target_pop * 1e6, fill = strategy_name), alpha = 0.5, col = NA) +
   geom_line() +
   theme_bw() +
-  facet_wrap(~std10) +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
         axis.line = element_line(),
@@ -129,7 +120,6 @@ p_infections_summary <- ggplot(data = filter(df2, sensitivity_scenario %in% c("D
   scale_fill_manual(values = col_set) +
   labs(x = "Dose scenario", y = "Incidence per mill since vaccination", col = "Dose scenario", fill = "Dose scenario") +
   theme_bw() +
-  facet_wrap(~max_Rt) +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
         axis.line = element_line(),

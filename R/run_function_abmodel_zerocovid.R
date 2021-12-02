@@ -24,7 +24,7 @@ run_scenario <-
            period_s = 250,
            t_period_l = 365,
            strategy = "realistic",
-           mu_ab_infection = 1,
+           mu_ab_infection = 1.9,
            R0_t3_in = "9/1/2021"
     ){
     
