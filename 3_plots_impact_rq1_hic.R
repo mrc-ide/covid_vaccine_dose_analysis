@@ -108,6 +108,7 @@ p_deaths_summary
 # plot outputs: infections
 p_infections <- ggplot(data = filter(df_summarise,
                            max_Rt ==5,
+                           std10 == 0.44,
                            t_d3 == 180,
                            strategy_name %in% c("Pre-vaccine introduction", "10y+ 2 doses, no booster", "10y+ 2 doses, booster 60y+", "10y+ 2 doses, booster 10y+"),
                            timestep < max(df_summarise$timestep))
@@ -115,7 +116,6 @@ p_infections <- ggplot(data = filter(df_summarise,
   geom_ribbon(aes(ymin =inc_tmin/target_pop * 1e6, ymax = inc_tmax/target_pop * 1e6, fill = strategy_name), alpha = 0.5, col = NA) +
   geom_line() +
   theme_bw() +
-  facet_wrap(~std10) +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
         axis.line = element_line(),
@@ -175,107 +175,107 @@ p_infections_summary
 # p_spacing_summary_deaths
 
 ################################
-name <- "rq1_hic_child_abmodel"
-
-df_summarise <- readRDS(paste0("processed_outputs/df_summarise_", name, ".rds"))
-df_summarise_totals <- readRDS(paste0("processed_outputs/df_summarise_totals_", name, ".rds"))
-
-p5 <- ggplot(data = filter(df_summarise_totals,
-                           waning == "Default",
-                           max_Rt == 3), aes(x = strategy_name, y = deaths_since_22_med/target_pop * 1e6, fill = strategy_name)) +
-  geom_bar(position = "dodge", stat = "identity", alpha = 0.8) +
-  geom_errorbar(aes(ymin = deaths_since_22_lower/target_pop * 1e6, ymax = deaths_since_22_upper / target_pop * 1e6), position = position_dodge()) +
-  scale_fill_manual(values = c(col_set[1], "burlywood4", "grey30" )) +
-  labs(x = "Dose scenario", y = "Deaths per mill since vaccination", col = "Dose scenario \n no boosters", fill = "Dose scenario \n no boosters") +
-  theme_bw() +
-  theme(strip.background = element_rect(fill = NA),
-        panel.border = element_blank(),
-        axis.line = element_line(),
-        legend.text.align = 0,
-        aspect.ratio = 1,
-        axis.text.x = element_text(angle = 335, vjust = 0.5, hjust=0))
-p5
-
-p6 <- ggplot(data = filter(df_summarise_totals,
-                           waning == "Default",
-                           max_Rt == 3), aes(x = strategy_name, y = inc_med/target_pop * 1e6, fill = strategy_name)) +
-  geom_bar(position = "dodge", stat = "identity", alpha = 0.8) +
-  geom_errorbar(aes(ymin = inc_lower/target_pop * 1e6, ymax = inc_upper / target_pop * 1e6), position = position_dodge()) +
-  scale_fill_manual(values = c(col_set[1], "burlywood4", "grey30" )) +
-  labs(x = "Dose scenario", y = "Cases per mill since vaccination", col = "Dose scenario \n no boosters", fill = "Dose scenario \n no boosters") +
-  theme_bw() +
-  theme(strip.background = element_rect(fill = NA),
-        panel.border = element_blank(),
-        axis.line = element_line(),
-        legend.text.align = 0,
-        aspect.ratio = 1,
-        axis.text.x = element_text(angle = 335, vjust = 0.5, hjust=0))
-p6
-
-p7 <- ggplot(data = filter(df_summarise,
-                           rollout_rate == "Default",
-                           waning == "Default",
-                           dose_3_timing == "6 months (default)")
-             , aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = strategy_name)) +
-  geom_ribbon(aes(ymin =deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = strategy_name), alpha = 0.5, col = NA) +
-  geom_line() +
-  theme_bw() +  facet_wrap(~transmission) +
-  facet_wrap(~transmission) +
-  theme(strip.background = element_rect(fill = NA),
-        panel.border = element_blank(),
-        axis.line = element_line(),
-        legend.text.align = 0) +
-  scale_color_viridis_d() +
-  scale_fill_viridis_d() +
-  labs(x = "Time", y = "Daily deaths per million", col = "Dose scenario", fill = "Dose scenario")
-p7
-
-# plot total doses over time
-p8 <- ggplot(data = filter(df_summarise,
-                           rollout_rate == "Default",
-                           waning == "Default",
-                           dose_3_timing == "6 months (default)",
-                           strategy_name != "Pre-vaccine introduction"), aes(x = as.Date(date), y  = vaccines_t/target_pop, col = strategy_name)) +
-  geom_line(size = 1) +
-  #facet_wrap(~t_d3, nrow = 3)+
-  lims(x = c(as.Date("2020-01-01"), as.Date("2023-01-01"))) +
-  theme_bw() +
-  theme(strip.background = element_rect(fill = NA),
-        panel.border = element_blank(),
-        axis.line = element_line(),
-        legend.text.align = 0) +
-  labs(x = "Year", y = "Cumulative doses delivered per person", col = "Dose scenario") +
-  scale_color_viridis_d(direction = -1)
-
-p8
-#p0 <- p0 + theme(legend.position = "none")
-#p2 <- p2 + theme(legend.position = "none")
-
-######
-# age plot
-name <- "rq1_hic_abmodel_age"
-
-df_summarise <- readRDS(paste0("processed_outputs/df_summarise_", name, ".rds"))
-
-x <- seq(0,80,5)
-y <- seq(4,84,5)
-z <- paste0(x,"-",y)
-z[17] <- "80+"
-
-age_plot <- ggplot(data = summary_df, aes(x = age, y= value_med, fill =strategy_name)) +
-  geom_col(position = "dodge", alpha = 0.8) +
-  theme_bw() +
-  theme(strip.background = element_rect(fill = NA),
-        panel.border = element_blank(),
-        axis.line = element_line(),
-        legend.text.align = 0,
-        axis.text.x = element_text(angle = 335, vjust = 0.5, hjust=0),
-        legend.position = "none") +
-  labs(x = "Age", y = "Total deaths since vaccine start", fill = "Dose scenario") +
-  scale_x_continuous(breaks = 1:17, labels = z) +
-  scale_fill_manual(values = col_set)
-
-age_plot
+# name <- "rq1_hic_child_abmodel"
+# 
+# df_summarise <- readRDS(paste0("processed_outputs/df_summarise_", name, ".rds"))
+# df_summarise_totals <- readRDS(paste0("processed_outputs/df_summarise_totals_", name, ".rds"))
+# 
+# p5 <- ggplot(data = filter(df_summarise_totals,
+#                            waning == "Default",
+#                            max_Rt == 3), aes(x = strategy_name, y = deaths_since_22_med/target_pop * 1e6, fill = strategy_name)) +
+#   geom_bar(position = "dodge", stat = "identity", alpha = 0.8) +
+#   geom_errorbar(aes(ymin = deaths_since_22_lower/target_pop * 1e6, ymax = deaths_since_22_upper / target_pop * 1e6), position = position_dodge()) +
+#   scale_fill_manual(values = c(col_set[1], "burlywood4", "grey30" )) +
+#   labs(x = "Dose scenario", y = "Deaths per mill since vaccination", col = "Dose scenario \n no boosters", fill = "Dose scenario \n no boosters") +
+#   theme_bw() +
+#   theme(strip.background = element_rect(fill = NA),
+#         panel.border = element_blank(),
+#         axis.line = element_line(),
+#         legend.text.align = 0,
+#         aspect.ratio = 1,
+#         axis.text.x = element_text(angle = 335, vjust = 0.5, hjust=0))
+# p5
+# 
+# p6 <- ggplot(data = filter(df_summarise_totals,
+#                            waning == "Default",
+#                            max_Rt == 3), aes(x = strategy_name, y = inc_med/target_pop * 1e6, fill = strategy_name)) +
+#   geom_bar(position = "dodge", stat = "identity", alpha = 0.8) +
+#   geom_errorbar(aes(ymin = inc_lower/target_pop * 1e6, ymax = inc_upper / target_pop * 1e6), position = position_dodge()) +
+#   scale_fill_manual(values = c(col_set[1], "burlywood4", "grey30" )) +
+#   labs(x = "Dose scenario", y = "Cases per mill since vaccination", col = "Dose scenario \n no boosters", fill = "Dose scenario \n no boosters") +
+#   theme_bw() +
+#   theme(strip.background = element_rect(fill = NA),
+#         panel.border = element_blank(),
+#         axis.line = element_line(),
+#         legend.text.align = 0,
+#         aspect.ratio = 1,
+#         axis.text.x = element_text(angle = 335, vjust = 0.5, hjust=0))
+# p6
+# 
+# p7 <- ggplot(data = filter(df_summarise,
+#                            rollout_rate == "Default",
+#                            waning == "Default",
+#                            dose_3_timing == "6 months (default)")
+#              , aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = strategy_name)) +
+#   geom_ribbon(aes(ymin =deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = strategy_name), alpha = 0.5, col = NA) +
+#   geom_line() +
+#   theme_bw() +  facet_wrap(~transmission) +
+#   facet_wrap(~transmission) +
+#   theme(strip.background = element_rect(fill = NA),
+#         panel.border = element_blank(),
+#         axis.line = element_line(),
+#         legend.text.align = 0) +
+#   scale_color_viridis_d() +
+#   scale_fill_viridis_d() +
+#   labs(x = "Time", y = "Daily deaths per million", col = "Dose scenario", fill = "Dose scenario")
+# p7
+# 
+# # plot total doses over time
+# p8 <- ggplot(data = filter(df_summarise,
+#                            rollout_rate == "Default",
+#                            waning == "Default",
+#                            dose_3_timing == "6 months (default)",
+#                            strategy_name != "Pre-vaccine introduction"), aes(x = as.Date(date), y  = vaccines_t/target_pop, col = strategy_name)) +
+#   geom_line(size = 1) +
+#   #facet_wrap(~t_d3, nrow = 3)+
+#   lims(x = c(as.Date("2020-01-01"), as.Date("2023-01-01"))) +
+#   theme_bw() +
+#   theme(strip.background = element_rect(fill = NA),
+#         panel.border = element_blank(),
+#         axis.line = element_line(),
+#         legend.text.align = 0) +
+#   labs(x = "Year", y = "Cumulative doses delivered per person", col = "Dose scenario") +
+#   scale_color_viridis_d(direction = -1)
+# 
+# p8
+# #p0 <- p0 + theme(legend.position = "none")
+# #p2 <- p2 + theme(legend.position = "none")
+# 
+# ######
+# # age plot
+# name <- "rq1_hic_abmodel_age"
+# 
+# df_summarise <- readRDS(paste0("processed_outputs/df_summarise_", name, ".rds"))
+# 
+# x <- seq(0,80,5)
+# y <- seq(4,84,5)
+# z <- paste0(x,"-",y)
+# z[17] <- "80+"
+# 
+# age_plot <- ggplot(data = summary_df, aes(x = age, y= value_med, fill =strategy_name)) +
+#   geom_col(position = "dodge", alpha = 0.8) +
+#   theme_bw() +
+#   theme(strip.background = element_rect(fill = NA),
+#         panel.border = element_blank(),
+#         axis.line = element_line(),
+#         legend.text.align = 0,
+#         axis.text.x = element_text(angle = 335, vjust = 0.5, hjust=0),
+#         legend.position = "none") +
+#   labs(x = "Age", y = "Total deaths since vaccine start", fill = "Dose scenario") +
+#   scale_x_continuous(breaks = 1:17, labels = z) +
+#   scale_fill_manual(values = col_set)
+# 
+# age_plot
 
 library(patchwork)
 
@@ -301,3 +301,10 @@ combined_infections <- p_infections + p_infections_summary +
   plot_layout(ncol = 2, nrow = 1, widths = c(2,1))
 combined_infections
 ggsave(paste0("plots/plots_impact_", name, "_infections.png"), height = 4, width = 10)
+
+combined_deaths <- p_deaths + p_deaths_summary +
+  plot_annotation(tag_levels = "A") + 
+  plot_layout(guides = "collect") + 
+  plot_layout(ncol = 2, nrow = 1, widths = c(2,1))
+combined_infections
+ggsave(paste0("plots/plots_impact_", name, "_deaths.png"), height = 4, width = 10)

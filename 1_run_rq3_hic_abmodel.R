@@ -62,11 +62,10 @@ scenarios <- expand_grid(income_group = income_group,
                          dose_3_fold_increase = dose_3_fold_increase,
                          vacc_per_week = vacc_per_week,
                          ab_model_infection = ab_model_infection,
-                         period_s = period_s,
-                         t_period_l = t_period_l,
                          t_d3 = t_d3,
                          mu_ab_infection = mu_ab_infection,
-                         R0_t3_in = R0_t3_in)  %>%
+                         R0_t3_in = R0_t3_in,
+                         max_Rt = max_Rt)  %>%
   filter((vaccine_doses == 2 & age_groups_covered_d3 == 5 ) | (vaccine_doses == 3) ) %>%
   unique()
 
