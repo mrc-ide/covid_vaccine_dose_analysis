@@ -15,7 +15,8 @@ df <- df %>%
                            if_else(vaccine_doses == 3 & age_groups_covered == 15 & age_groups_covered_d3 == 9, "10y+ 2 doses, booster 40y+",
                                    if_else(vaccine_doses == 3 & age_groups_covered == 15 & age_groups_covered_d3 == 13, "10y+ 2 doses, booster 20y+",
                                            if_else(vaccine_doses == 3 & age_groups_covered == 15 & age_groups_covered_d3 == 15, "10y+ 2 doses, booster 10y+", "NA")))))) %>%
-  mutate(rollout_rate = if_else(vacc_per_week == 0.05, "Default", if_else(vacc_per_week < 0.05, "Slower rollout", "None"))) 
+  mutate(rollout_rate = if_else(vacc_per_week == 0.05, "Default", if_else(vacc_per_week < 0.05, "Slower rollout", "None"))) %>%
+  mutate(dose_3_timing = if_else(t_d3 == 180, "6 months (default)", if_else(t_d3 == 240, "8 months", if_else(t_d3 == 360, "12 months", "NA"))))
 
 m <- unique(df$strategy_name)
 m
@@ -24,7 +25,7 @@ df <- df %>%
 
 # summarise totals over repetitions
 df <- df %>%
-  group_by(income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, strategy_name, ab_model_infection, vacc_per_week, t_d3, rollout_rate, max_Rt, std10) %>%
+  group_by(income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, strategy_name, ab_model_infection, vacc_per_week, t_d3,dose_3_timing, rollout_rate, max_Rt, std10) %>%
   mutate(deaths_med = median(deaths),
          deaths_lower = quantile(deaths, 0.025),
          deaths_upper = quantile(deaths, 0.975),
@@ -43,13 +44,13 @@ df_summarise_totals <- df %>%
 m3 <- unique(df_summarise_totals$strategy_name)
 m3
 df_summarise_totals <- df_summarise_totals %>%
-  mutate(strategy_name = factor(strategy_name, levels = c(m3[1], m3[3], m3[4], m3[5], m3[2]), ordered = TRUE))
+  mutate(strategy_name = factor(strategy_name, levels = c(m3[1], m3[5], m3[2], m3[3], m3[4]), ordered = TRUE))
 
 # summarise temporal dynamics over repetitions
 df_summarise <- df %>%
   unnest(cols) %>%
   select(-c(deaths, prop_R, inc)) %>%
-  group_by(timestep, income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, deaths_med, deaths_lower, deaths_upper, inc_med, inc_lower, inc_upper, prop_R_med, total_doses_med, strategy_name, vacc_per_week, t_d3, rollout_rate, max_Rt, std10) %>%
+  group_by(timestep, income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, deaths_med, deaths_lower, deaths_upper, inc_med, inc_lower, inc_upper, prop_R_med, total_doses_med, strategy_name, vacc_per_week, t_d3,dose_3_timing, rollout_rate, max_Rt, std10) %>%
   summarise(deaths_t = median(D_count),
             deaths_tmin = quantile(D_count, 0.025),
             deaths_tmax = quantile(D_count, 0.975),
@@ -68,9 +69,11 @@ df_summarise <- df %>%
 
 # tidy up period before vacc introduction
 df0_pre_vacc <- df_summarise %>%
-  filter(date < as.Date("2021-01-01")) %>%
+  filter(date < as.Date("2021-01-01"),
+         t_d3 == 180) %>%
   filter(strategy_name == "10y+ 2 doses, no booster") %>%
-  mutate(strategy_name = "Pre-vaccine introduction")
+  mutate(strategy_name = "Pre-vaccine introduction",
+         dose_3_timing = "Pre-vaccine introduction")
 
 df0_post_vacc <- df_summarise %>%
   filter(date >= as.Date("2021-01-01"))

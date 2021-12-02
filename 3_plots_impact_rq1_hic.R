@@ -15,14 +15,21 @@ df_summarise_totals <- readRDS(paste0("processed_outputs/df_summarise_totals_", 
 
 m <- unique(df_summarise$strategy_name)
 m
+
 df_summarise <- df_summarise %>%
   mutate(strategy_name = factor(strategy_name, levels = m, ordered = TRUE))
 
-# df_summarise <- df_summarise %>%
-#   mutate(dose_3_timing = factor(dose_3_timing, levels = c("Pre-vaccine introduction", "6 months (default)", "8 months", "12 months")))
-# 
-# df_summarise_totals <- df_summarise_totals %>%
-#   mutate(dose_3_timing = factor(dose_3_timing, levels = c("6 months (default)", "8 months", "12 months")))
+df_summarise_totals <- df_summarise_totals %>%
+  mutate(strategy_name = factor(strategy_name, levels = m, ordered = TRUE))
+
+ df_summarise <- df_summarise %>%
+   mutate(dose_3_timing = factor(dose_3_timing, levels = c("Pre-vaccine introduction", "6 months (default)", "8 months", "12 months")))
+
+df_summarise_totals <- df_summarise_totals %>%
+  mutate(dose_3_timing = factor(dose_3_timing, levels = c("6 months (default)", "8 months", "12 months")))
+
+df_summarise_totals <- df_summarise_totals %>%
+  mutate(max_Rt = factor(max_Rt, levels = c(5,3), labels = c("Rt_max = 5", "Rt_max = 3")))
 
 ################################
 
@@ -30,7 +37,8 @@ df_summarise <- df_summarise %>%
 fig_doses_time <- ggplot(data = filter(df_summarise,
                            strategy_name != "Pre-vaccine introduction",
                            max_Rt == 3,
-                           std10 == 0.44), aes(x = as.Date(date), y  = vaccines_t/target_pop, col = strategy_name)) +
+                           std10 == 0.44,
+                           t_d3 == 180), aes(x = as.Date(date), y  = vaccines_t/target_pop, col = strategy_name)) +
   geom_line(size = 1) +
   lims(x = c(as.Date("2020-01-01"), as.Date("2023-01-01"))) +
   theme_bw() +
@@ -47,7 +55,9 @@ fig_doses_time
 # plot outputs: deaths
 p_deaths <- ggplot(data = filter(df_summarise,
                            strategy_name %in% c("Pre-vaccine introduction", "10y+ 2 doses, no booster", "10y+ 2 doses, booster 60y+", "10y+ 2 doses, booster 10y+"),
-                           max_Rt == 3)
+                           max_Rt == 5,
+                           t_d3 == 180,
+                           std10 == 0.44)
              , aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = strategy_name)) +
   geom_ribbon(aes(ymin =deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = strategy_name), alpha = 0.5, col = NA) +
   geom_line() +
@@ -61,11 +71,11 @@ p_deaths <- ggplot(data = filter(df_summarise,
   labs(x = "Time", y = "Daily deaths per million", col = "Dose scenario", fill = "Dose scenario")
 
 p_deaths
-ggsave("p_deaths.png", p_deaths, height = 3, width = 8)
+#ggsave("p_deaths.png", p_deaths, height = 3, width = 8)
 
 p_Rt <- ggplot(data = filter(df_summarise,
                                  strategy_name %in% c("Pre-vaccine introduction", "10y+ 2 doses, no booster"),
-                                 max_Rt == 3)
+                                 max_Rt == 5, std10 == 0.44)
                    , aes(x = as.Date(date), y = Rt, col = strategy_name)) +
   geom_line() +
   theme_bw() +
@@ -80,32 +90,25 @@ p_Rt <- ggplot(data = filter(df_summarise,
 p_Rt
 
 ggsave("p_Rt.png", p_Rt, height = 3, width = 8)
-# barplot summary of deaths
-df2 <- df_summarise_totals %>%
-  mutate(sensitivity_scenario = if_else(waning == "Default" & rollout_rate == "Default" & dose_3_timing == "6 months (default)", "Default", if_else(waning == "Default" & rollout_rate == "Slower rollout" & dose_3_timing == "6 months (default)", "Slower rollout", if_else(waning == "Slower vaccine waning" & rollout_rate == "Default" & dose_3_timing == "6 months (default)", "Slower vaccine waning", "None")))) %>%
-  mutate(sensitivity_scenario = if_else(waning == "Default" & rollout_rate == "Default" & dose_3_timing == "12 months", "Booster 12 months", sensitivity_scenario)) %>%
-  filter(sensitivity_scenario != "None") %>%
-  mutate(sensitivity_scenario = factor(sensitivity_scenario, levels = c("Default", "Slower rollout", "Slower vaccine waning", "Booster 12 months")))
 
-p_deaths_summary <- ggplot(data = filter(df2, sensitivity_scenario %in% c("Default", "Slower vaccine waning")), aes(x = sensitivity_scenario, y = deaths_med/target_pop * 1e6, fill = strategy_name)) +
+# barplot summary of deaths
+p_deaths_summary <- ggplot(data = filter(df_summarise_totals, std10 == 0.44, t_d3 == 180), aes(x = factor(max_Rt), y = deaths_med/target_pop * 1e6, fill = strategy_name)) +
   geom_bar(position = "dodge", stat = "identity", alpha = 0.8) +
-  geom_errorbar(aes(ymin = deaths_lower/target_pop * 1e6, ymax = deaths_upper / target_pop * 1e6), position = position_dodge()) +
+  #geom_errorbar(aes(ymin = deaths_lower/target_pop * 1e6, ymax = deaths_upper / target_pop * 1e6), position = position_dodge()) +
   scale_fill_manual(values = col_set) +
   labs(x = "Dose scenario", y = "Total deaths per million since vaccination start", col = "Dose scenario", fill = "Dose scenario") +
   theme_bw() +
-  facet_wrap(~max_Rt, nrow = 2)+
-  
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
         axis.line = element_line(),
-        legend.text.align = 0,
-        axis.text.x = element_text(angle = 335, vjust = 0.5, hjust=0))
+        legend.text.align = 0)
 
 p_deaths_summary
 
 # plot outputs: infections
 p_infections <- ggplot(data = filter(df_summarise,
-                           max_Rt ==3,
+                           max_Rt ==5,
+                           t_d3 == 180,
                            strategy_name %in% c("Pre-vaccine introduction", "10y+ 2 doses, no booster", "10y+ 2 doses, booster 60y+", "10y+ 2 doses, booster 10y+"),
                            timestep < max(df_summarise$timestep))
              , aes(x = as.Date(date), y = inc_t/target_pop * 1e6, col = strategy_name)) +
@@ -123,55 +126,53 @@ p_infections <- ggplot(data = filter(df_summarise,
 
 p_infections
 
-p_infections_summary <- ggplot(data = filter(df2, sensitivity_scenario %in% c("Default", "Slower vaccine waning")), aes(x = sensitivity_scenario, y = inc_med/target_pop * 1e6, fill = strategy_name)) +
+p_infections_summary <- ggplot(data = filter(df_summarise_totals, std10 == 0.44, t_d3 == 180), aes(x = factor(max_Rt), y = inc_med/target_pop * 1e3, fill = strategy_name)) +
   geom_bar(position = "dodge", stat = "identity", alpha = 0.8) +
-  geom_errorbar(aes(ymin = inc_lower/target_pop * 1e6, ymax = inc_upper / target_pop * 1e6), position = position_dodge()) +
   scale_fill_manual(values = col_set) +
-  labs(x = "Dose scenario", y = "Incidence per mill since vaccination", col = "Dose scenario", fill = "Dose scenario") +
+  labs(x = "Dose scenario", y = "Tncidence per thousand since vacc start", col = "Dose scenario", fill = "Dose scenario") +
   theme_bw() +
-  facet_wrap(~max_Rt) +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
         axis.line = element_line(),
-        legend.text.align = 0,
-        axis.text.x = element_text(angle = 335, vjust = 0.5, hjust=0))
+        legend.text.align = 0)
 
 p_infections_summary
 
 # plot outputs: deaths with wider dose spacing
-p_spacing <- ggplot(data = filter(df_summarise,
-                           rollout_rate == "Default",
-                           waning == "Default",
-                           strategy_name %in% c("Pre-vaccine introduction", "10y+ 2 doses, booster 60y+"))
-             , aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = dose_3_timing)) +
-  geom_ribbon(aes(ymin = deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = dose_3_timing), alpha = 0.5, col = NA) +
-  geom_line() +
-  theme_bw() +
-  theme(strip.background = element_rect(fill = NA),
-        panel.border = element_blank(),
-        axis.line = element_line(),
-        legend.text.align = 0) +
-  scale_fill_manual(values = c("grey20", col_set[2], col_set_spacing)) +
-  scale_color_manual(values = c("grey20",col_set[2], col_set_spacing)) +
-  labs(x = "Time", y = "Daily deaths per million", col = "Booster dose timing", fill = "Booster dose timing")
-
-p_spacing
-
-p_spacing_summary_deaths <- ggplot(data = filter(df_summarise_totals,
-                                          rollout_rate == "Default",
-                                          waning == "Default",
-                                          strategy_name %in% c("10y+ 2 doses, booster 60y+")), aes(x = dose_3_timing, y = deaths_med, fill = dose_3_timing)) +
-  geom_col(position = "dodge", alpha = 0.8) +
-  scale_fill_manual(values = c(col_set[2], col_set_spacing)) +
-  theme_bw() +
-  theme(strip.background = element_rect(fill = NA),
-        panel.border = element_blank(),
-        axis.line = element_line(),
-        legend.text.align = 0,
-        legend.position = "none") +
-  labs(x = "Booster dose timing", y = "Deaths per mill since vaccination")
-
-p_spacing_summary_deaths
+# p_spacing <- ggplot(data = filter(df_summarise,
+#                            rollout_rate == "Default",
+#                            std10 == 0.44,
+#                            max_Rt == 5,
+#                            strategy_name %in% c("Pre-vaccine introduction", "10y+ 2 doses, booster 60y+"))
+#              , aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = dose_3_timing)) +
+#   geom_ribbon(aes(ymin = deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = dose_3_timing), alpha = 0.5, col = NA) +
+#   geom_line() +
+#   theme_bw() +
+#   theme(strip.background = element_rect(fill = NA),
+#         panel.border = element_blank(),
+#         axis.line = element_line(),
+#         legend.text.align = 0) +
+#   scale_fill_manual(values = c("grey20", col_set[2], col_set_spacing)) +
+#   scale_color_manual(values = c("grey20",col_set[2], col_set_spacing)) +
+#   labs(x = "Time", y = "Daily deaths per million", col = "Booster dose timing", fill = "Booster dose timing")
+# 
+# p_spacing
+# 
+# p_spacing_summary_deaths <- ggplot(data = filter(df_summarise_totals,
+#                                           rollout_rate == "Default",
+#                                           waning == "Default",
+#                                           strategy_name %in% c("10y+ 2 doses, booster 60y+")), aes(x = dose_3_timing, y = deaths_med, fill = dose_3_timing)) +
+#   geom_col(position = "dodge", alpha = 0.8) +
+#   scale_fill_manual(values = c(col_set[2], col_set_spacing)) +
+#   theme_bw() +
+#   theme(strip.background = element_rect(fill = NA),
+#         panel.border = element_blank(),
+#         axis.line = element_line(),
+#         legend.text.align = 0,
+#         legend.position = "none") +
+#   labs(x = "Booster dose timing", y = "Deaths per mill since vaccination")
+# 
+# p_spacing_summary_deaths
 
 ################################
 name <- "rq1_hic_child_abmodel"

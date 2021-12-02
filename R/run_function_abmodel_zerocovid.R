@@ -18,14 +18,15 @@ run_scenario <-
            age_groups_covered_d3 = 14,
            vacc_per_week = 0.025,
            name = "scenario1",
-           ab_model_infection = FALSE,
+           ab_model_infection = TRUE,
            std10 = 0.44,
-           t_d3 = 240,
-           period_s = 250,
-           t_period_l = 365,
+           t_d3 = 180,
+           period_s = 115.8142,
+           t_period_l = 357.6847,
            strategy = "realistic",
            mu_ab_infection = 1.9,
-           R0_t3_in = "9/1/2021"
+           R0_t3_in = "9/1/2021",
+           max_Rt = 5
     ){
     
     
@@ -60,7 +61,7 @@ run_scenario <-
     time_period <- as.integer(difftime(tmax_date, R0_t0 - 1))
     
     dates <- c(R0_t0, R0_t1, R0_t2, R0_t3, R0_t4)
-    rt <-    c(1.1,   1.1,   0.2,   0.2,   3)
+    rt <-    c(1.1,   1.1,   0.2,   0.2,   max_Rt)
     rt_out <- safir::interpolate_rt(dates = dates, rt = rt, max_date = tmax_date)
     
     
@@ -170,7 +171,7 @@ run_scenario <-
       events <- create_events_vaccination(events = events, parameters = parameters)
       attach_event_listeners(variables = variables, events = events, parameters = parameters, dt = dt)
       attach_event_listeners_vaccination(variables = variables,events = events,parameters = parameters,dt = dt)
-      attach_event_listeners_natural_immunity(variables = variables, events = events, parameters = parameters, dt = dt)
+      attach_event_listeners_natural_immunity(variables = variables, events = events, parameters = parameters, dt = dt, additive = TRUE)
       
       # renderer object is made
       renderer <- individual::Render$new(parameters$time_period)

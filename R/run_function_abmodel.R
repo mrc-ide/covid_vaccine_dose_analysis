@@ -60,7 +60,7 @@ run_scenario <-
     
     R0_t8 <- as.Date(x = "12/31/2021", format = "%m/%d/%Y")
 
-    tmax_date <- as.Date(x = "12/31/2022", format = "%m/%d/%Y")
+    tmax_date <- as.Date(x = "06/30/2023", format = "%m/%d/%Y")
     time_period <- as.integer(difftime(tmax_date, R0_t0 - 1))
     # get index for 1 Jan 2022, as don't want to vacc any children <10y before this time
     t_10y_start <- as.integer(difftime(as.Date("01/01/2022", format = "%m/%d/%Y"), R0_t0-1))
