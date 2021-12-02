@@ -10,8 +10,8 @@ library(furrr)
 library(zoo)
 library(here)
 
-source("R/utils.R")
-source("R/run_function_abmodel.R")
+source("utils_vfr.R")
+source("run_function_abmodel_vfr.R")
 source("R/plotting_utils.R")
 source("R/vaccine_strategy.R")
 
@@ -34,9 +34,9 @@ dose_3_fold_increase <- 6
 vacc_per_week <- 0.05
 ab_model_infection <- TRUE
 strategy <- "realistic"
-t_d3 <- c(180, 360)
+t_d3 <- 180
 max_Rt <- c(3, 5)
-std10 <- c(0.44, 0.02)
+std10 <- 0.44
 
 #### Create scenarios ##########################################################
 
@@ -72,7 +72,7 @@ write_csv(scenarios, paste0("scenarios_", name, ".csv"))
 
 #### Run the model on cluster ###############################################
 # Load functions
-sources <- c("R/run_function_abmodel.R", "R/utils.R", "R/vaccine_strategy.R")
+sources <- c("]run_function_abmodel_vfr.R", "utils_vfr.R", "R/vaccine_strategy.R")
 src <- conan::conan_sources(c("mrc-ide/safir", "mrc-ide/squire", "mrc-ide/nimue"))
 ctx <- context::context_save("context",
                              sources = sources,
