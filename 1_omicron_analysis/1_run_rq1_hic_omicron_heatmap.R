@@ -36,8 +36,8 @@ ab_model_infection <- TRUE
 strategy <- "realistic"
 t_d3 <- 180
 max_Rt <- 5
-max_Rt_omicron <- c(5,5.5,6,6.5,7,7.5,8,8.5)
-vfr <- c(1,2,4,8,16)
+max_Rt_omicron <- c(5,5.5,6,6.5,7,7.5,8,8.5,9)
+vfr <- c(1,2,4,8)
 vfr_time1 <- "11/15/2021"
 vfr_time2 <- "12/31/2021"
 
