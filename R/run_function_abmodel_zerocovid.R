@@ -1,7 +1,6 @@
 # main running function
-
-run_scenario <- 
-  function( scenario = 1,
+run_scenario_zerocovid <- 
+  function(scenario = 1,
            target_pop = 1e6,
            income_group = "HIC",
            hs_constraints = "Present",
@@ -16,13 +15,12 @@ run_scenario <-
            variant_fold_reduction = 1,
            dose_3_fold_increase = 1,
            age_groups_covered_d3 = 14,
-           vacc_per_week = 0.025,
+           vacc_per_week = 0.05,
            name = "scenario1",
            ab_model_infection = TRUE,
-           std10 = 0.44,
            t_d3 = 180,
-           period_s = 115.8142,
-           t_period_l = 357.6847,
+           std10 = 0.44,
+           std10_infection = 0.44,
            strategy = "realistic",
            mu_ab_infection = 1.9,
            R0_t3_in = "9/1/2021",
@@ -49,7 +47,6 @@ run_scenario <-
     # time is.
     # likewise you could move things earlier to relax in Jan 2022
     
-    
     # piecewise segments
     R0_t0 <- as.Date(x = "2/1/2020", format = "%m/%d/%Y")
     R0_t1 <- as.Date(x = "3/1/2020", format = "%m/%d/%Y")
@@ -57,17 +54,17 @@ run_scenario <-
     R0_t3 <- as.Date(R0_t3_in, format = "%m/%d/%Y")
     R0_t4 <- as.Date(R0_t3+30)
     
-    tmax_date <- as.Date(x = "3/31/2023", format = "%m/%d/%Y")
+    tmax_date <- as.Date(x = "06/30/2023", format = "%m/%d/%Y")
     time_period <- as.integer(difftime(tmax_date, R0_t0 - 1))
+    # get index for 1 Jan 2022, as don't want to vacc any children <10y before this time
+    t_10y_start <- as.integer(difftime(as.Date("01/01/2022", format = "%m/%d/%Y"), R0_t0-1))
     
     dates <- c(R0_t0, R0_t1, R0_t2, R0_t3, R0_t4)
     rt <-    c(1.1,   1.1,   0.2,   0.2,   max_Rt)
     rt_out <- safir::interpolate_rt(dates = dates, rt = rt, max_date = tmax_date)
     
-    
     vacc_start <- as.Date(x = vacc_start, format = "%m/%d/%Y")
     days_to_vacc_start <- as.integer(difftime(vacc_start, R0_t0))
-    
     
     # daily per-capita prob of external infection
     lambda_external <- rep(0, time_period)
@@ -138,9 +135,7 @@ run_scenario <-
                                  dose_3_fold_increase = dose_3_fold_increase,
                                  vaccine_doses = vaccine_doses,
                                  std10 = std10,
-                                 t_d3 = t_d3,
-                                 period_s = period_s,
-                                 t_period_l = t_period_l)
+                                 t_d3 = t_d3)
     # dosing
     if (vaccine_doses == 2) {dose_period <- c(NaN, 28)}
     if (vaccine_doses == 3) {dose_period <- c(NaN, 28, (t_d3 + 28))}

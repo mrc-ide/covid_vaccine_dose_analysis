@@ -20,12 +20,9 @@ run_scenario <-
            ab_model_infection = TRUE,
            std10 = 0.44,
            t_d3 = 180,
-           period_s = 115.8142,
-           t_period_l = 357.6847,
-           max_dose = 3,
-           mu_ab_infection = 1.9,
+           mu_ab_infection = 2,
            strategy = "realistic",
-           max_Rt = 3){
+           max_Rt = 5){
     
     # set up transmission
     # --------------------------------------------------------------------------------
@@ -49,15 +46,12 @@ run_scenario <-
     # piecewise segments
     R0_t0 <- as.Date(x = "2/1/2020", format = "%m/%d/%Y")
     R0_t1 <- as.Date(x = "3/1/2020", format = "%m/%d/%Y")
-    #R0_t2 <- as.Date(x = "5/1/2020", format = "%m/%d/%Y")
     R0_t2 <- as.Date(x = "4/15/2020", format = "%m/%d/%Y")
     R0_t3 <- as.Date(x = "11/1/2020", format = "%m/%d/%Y")
     R0_t4 <- as.Date(x = "12/1/2020", format = "%m/%d/%Y")
     R0_t5 <- as.Date(x = "1/1/2021", format = "%m/%d/%Y")
     R0_t6 <- as.Date(x = "2/1/2021", format = "%m/%d/%Y")
-    #R0_t7 <- as.Date(x = "6/1/2021", format = "%m/%d/%Y")
     R0_t7 <- as.Date(x = "7/1/2021", format = "%m/%d/%Y")
-    
     R0_t8 <- as.Date(x = "12/31/2021", format = "%m/%d/%Y")
 
     tmax_date <- as.Date(x = "06/30/2023", format = "%m/%d/%Y")
@@ -139,12 +133,9 @@ run_scenario <-
     vax_pars <- get_vaccine_pars(vaccine = vaccine,
                                 variant_fold_reduction = variant_fold_reduction,
                                 dose_3_fold_increase = dose_3_fold_increase,
-                               vaccine_doses = vaccine_doses,
+                                vaccine_doses = vaccine_doses,
                                 std10 = std10,
-                                t_d3 = t_d3,
-                                period_s = period_s,
-                                t_period_l = t_period_l
-                                )
+                                t_d3 = t_d3)
     
     # dosing
     if (vaccine_doses == 2) {dose_period <- c(NaN, 28)}
