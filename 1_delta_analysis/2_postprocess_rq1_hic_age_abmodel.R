@@ -31,7 +31,7 @@ summary_df <- df %>%
   filter(timestep == max(df$timestep) | timestep == (365-31)) %>%
   pivot_wider(names_from = timestep, values_from = value) %>%
   mutate(value = `1246` - `334`) %>%
-  group_by(income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, strategy_name, ab_model_infection, vacc_per_week, t_d3, dose_3_timing, rollout_rate, repetition, compartment, age) %>%
+  group_by(income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, strategy_name, ab_model_infection, vacc_per_week, t_d3, dose_3_timing, rollout_rate, compartment, age) %>%
   summarise(value_med = median(value),
          value_lower = quantile(value, 0.025),
          value_upper = quantile(value, 0.975)) %>%

@@ -1,5 +1,5 @@
 name <- "rq2_lmic_abmodel"
-ages_covered <- 9
+ages_covered <- 5
 dose_3_t <- 180
 
 df_summarise <- readRDS(paste0("processed_outputs/df_summarise_", name, ".rds")) %>%

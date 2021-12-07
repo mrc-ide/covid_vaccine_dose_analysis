@@ -56,7 +56,7 @@ run_scenario <-
     # compute level of Rt reached before Omicron switch
     Rt_scaling <- as.integer(difftime(R0_t8, R0_t7)) / 
     as.integer(difftime(as.Date(x = "12/31/2021", format = "%m/%d/%Y"), R0_t7))
-    rt <-    c(2.5,   2.5,   0.8,   0.8,   1.05,   1.05,   1.0,   1.0,  Rt_scaling*max_Rt, max_Rt_omicron)
+    rt <-    c(2.5,   2.5,   0.8,   0.8,   1.05,   1.05,   1.0,   1.0,  Rt_scaling*(max_Rt - 1.0) + 1.0, max_Rt_omicron)
     rt_out <- safir::interpolate_rt(dates = dates, rt = rt, max_date = tmax_date)
     
     vacc_start <- as.Date(x = vacc_start, format = "%m/%d/%Y")

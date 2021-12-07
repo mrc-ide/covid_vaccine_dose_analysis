@@ -21,7 +21,7 @@ target_pop <- 1e6
 income_group <- "HIC"
 hs_constraints <- "Present"
 dt <- 0.25
-repetition <- 1:5
+repetition <- 1:10
 vacc_start <- "1/1/2021"
 vaccine_doses <- c(2,3)
 vaccine <- "Pfizer"

@@ -20,7 +20,7 @@ name <- "counterfactual_abmodel"
 target_pop <- 1e6
 income_group <- "HIC"
 hs_constraints <- "Present"
-dt <- 0.2
+dt <- 0.25
 repetition <- 1:5
 vacc_start <- "1/1/2021"
 vaccine_doses <- 2
@@ -34,11 +34,9 @@ dose_3_fold_increase <- 6
 vacc_per_week <- 0.05
 ab_model_infection <- TRUE
 strategy <- "realistic"
-period_s <- 250
-t_period_l <- 365
 t_d3 <- 180
-mu_ab_infection <- c(1, 1.9)
-max_Rt = c(3, 5)
+mu_ab_infection <- 1.9
+max_Rt <- 5
 
 #### Create scenarios ##########################################################
 
@@ -58,8 +56,6 @@ scenarios <- expand_grid(income_group = income_group,
                          dose_3_fold_increase = dose_3_fold_increase,
                          vacc_per_week = vacc_per_week,
                          ab_model_infection = ab_model_infection,
-                         period_s = period_s,
-                         t_period_l = t_period_l,
                          t_d3 = t_d3,
                          mu_ab_infection = mu_ab_infection,
                          max_Rt = max_Rt)

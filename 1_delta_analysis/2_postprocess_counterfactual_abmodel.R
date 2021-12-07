@@ -13,17 +13,18 @@ df_deaths <- df %>%
   select(-c(deaths, prop_R, inc)) %>%
   mutate(date = timestep + as.Date("2020-02-01")) %>%
   filter(date <= as.Date("2020-12-31")) %>%
-  group_by(repetition, income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, vacc_per_week, period_s, t_period_l, t_d3, mu_ab_infection, max_Rt) %>%
+  group_by(repetition, income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, vacc_per_week, t_d3, mu_ab_infection, max_Rt) %>%
   summarise(deaths = sum(D_count),
             .groups = 'drop') %>%
-  group_by(income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, vacc_per_week, period_s, t_period_l, t_d3, mu_ab_infection, max_Rt) %>%
+  group_by(income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, vacc_per_week, t_d3, mu_ab_infection, max_Rt) %>%
   summarise(deaths = median(deaths),
             .groups = 'drop')
 
+df_deaths$deaths
 
 # summarise totals over repetitions
 df <- df %>%
-  group_by(income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, ab_model_infection, vacc_per_week, period_s, t_period_l, t_d3, mu_ab_infection, max_Rt) %>%
+  group_by(income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, ab_model_infection, vacc_per_week, t_d3, mu_ab_infection, max_Rt) %>%
   mutate(deaths_med = median(deaths),
          deaths_lower = quantile(deaths, 0.025),
          deaths_upper = quantile(deaths, 0.975),
@@ -42,7 +43,7 @@ df_summarise_totals <- df %>%
 df_summarise <- df %>%
   unnest(cols) %>%
   select(-c(deaths, prop_R, inc)) %>%
-  group_by(timestep, income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, deaths_med, deaths_lower, deaths_upper, inc_med, inc_lower, inc_upper, prop_R_med, total_doses_med, vacc_per_week, period_s, t_period_l, t_d3, mu_ab_infection, max_Rt) %>%
+  group_by(timestep, income_group, target_pop, max_coverage, age_groups_covered, age_groups_covered_d3, vaccine_doses, vacc_start, variant_fold_reduction, dose_3_fold_increase, deaths_med, deaths_lower, deaths_upper, inc_med, inc_lower, inc_upper, prop_R_med, total_doses_med, vacc_per_week, t_d3, mu_ab_infection, max_Rt) %>%
   summarise(deaths_t = median(D_count),
             deaths_tmin = quantile(D_count, 0.025),
             deaths_tmax = quantile(D_count, 0.975),

@@ -91,7 +91,7 @@ get_vaccine_pars <- function(
       select(-fold_red_delta)
   
   ab_parameters <- safir::get_vaccine_ab_titre_parameters(
-    vaccine = vaccine, max_dose = vaccine_doses, correlated = FALSE,
+    vaccine = vaccine, max_dose = vaccine_doses, correlated = TRUE,
     hl_s = hl_s, hl_l = hl_l, period_s = period_s, t_period_l = t_period_l,
     ab_50 = ab_50, ab_50_severe = ab_50_severe, std10 = std10, k = k,
     mu_ab_list = mu_ab_list

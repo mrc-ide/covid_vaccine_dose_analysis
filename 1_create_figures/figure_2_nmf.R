@@ -140,7 +140,7 @@ p_infections_delta <- ggplot(data = filter(df_summarise,
 p_infections_delta
 
 # plot deaths - omicron scenario
-name <- "rq1_hic_abmodel_omicron"
+name <- "rq1_hic_abmodel_omicron_nmf"
 df_summarise_om <- readRDS(paste0("processed_outputs/df_summarise_", name, ".rds"))
 df_summarise_totals_om <- readRDS(paste0("processed_outputs/df_summarise_totals_", name, ".rds"))
 
@@ -237,6 +237,7 @@ p_deaths_summary <- ggplot(data = df_barchart, aes(x = scenario, y = deaths_med/
         legend.text.align = 0)
 
 p_deaths_summary
+
 
 # barplot summary of incidence
 p_inc_summary <- ggplot(data = df_barchart, aes(x = scenario, y = inc_med/target_pop * 1e6, fill = strategy_name)) +
