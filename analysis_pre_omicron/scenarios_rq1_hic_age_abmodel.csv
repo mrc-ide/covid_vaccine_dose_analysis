@@ -1,6 +1,0 @@
-income_group,target_pop,hs_constraints,vaccine_doses,vaccine,max_coverage,age_groups_covered,age_groups_covered_d3,vacc_start,dt,repetition,seeding_cases,variant_fold_reduction,dose_3_fold_increase,vacc_per_week,ab_model_infection,period_s,t_period_l,t_d3,scenario,name,strategy
-HIC,1000000,Present,2,Pfizer,0.9,15,5,1/1/2021,0.5,1,10,1,6,0.05,TRUE,250,365,180,1,rq1_hic_age_abmodel,realistic
-HIC,1000000,Present,3,Pfizer,0.9,15,5,1/1/2021,0.5,1,10,1,6,0.05,TRUE,250,365,180,2,rq1_hic_age_abmodel,realistic
-HIC,1000000,Present,3,Pfizer,0.9,15,9,1/1/2021,0.5,1,10,1,6,0.05,TRUE,250,365,180,3,rq1_hic_age_abmodel,realistic
-HIC,1000000,Present,3,Pfizer,0.9,15,13,1/1/2021,0.5,1,10,1,6,0.05,TRUE,250,365,180,4,rq1_hic_age_abmodel,realistic
-HIC,1000000,Present,3,Pfizer,0.9,15,15,1/1/2021,0.5,1,10,1,6,0.05,TRUE,250,365,180,5,rq1_hic_age_abmodel,realistic

@@ -1,3 +1,0 @@
-income_group,target_pop,hs_constraints,vaccine_doses,vaccine,max_coverage,age_groups_covered,age_groups_covered_d3,vacc_start,dt,repetition,seeding_cases,variant_fold_reduction,dose_3_fold_increase,vacc_per_week,ab_model_infection,scenario,name
-LMIC,1000000,Present,2,Oxford-AstraZeneca,0,9,9,1/1/2021,0.5,1,10,1,6,0.015,TRUE,1,counterfactual_test1
-LMIC,1000000,Present,2,Oxford-AstraZeneca,0,9,9,1/1/2021,0.5,1,10,1,6,0.015,FALSE,2,counterfactual_test1
