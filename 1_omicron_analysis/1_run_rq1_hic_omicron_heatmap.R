@@ -1,19 +1,3 @@
-library(safir)
-library(squire)
-library(nimue)
-library(data.table)
-library(ggplot2)
-library(parallel)
-library(tidyverse)
-library(countrycode)
-library(furrr)
-library(zoo)
-library(here)
-
-source("R/utils.R")
-source("R/run_function_abmodel_omicron.R")
-source("R/plotting_utils.R")
-source("R/vaccine_strategy.R")
 
 name <- "rq1_hic_omicron_heatmap"
 
@@ -36,8 +20,8 @@ ab_model_infection <- TRUE
 strategy <- "realistic"
 t_d3 <- 180
 max_Rt <- 5
-max_Rt_omicron <- c(5,5.5,6,6.5,7,7.5,8,8.5,9)
-vfr <- c(1,2,4,8)
+max_Rt_omicron <- c(5,5.5,6,6.5,7,7.5,8,8.5)
+vfr <- c(1,2,4,8,16)
 vfr_time1 <- "11/15/2021"
 vfr_time2 <- "12/31/2021"
 

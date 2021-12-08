@@ -1,4 +1,4 @@
-name <- "rq3_hic_abmodel_zerocovid_omicron"
+name <- "rq3_hic_abmodel_zerocovid"
 
 df_summarise <- readRDS(paste0("processed_outputs/df_summarise_", name, ".rds"))
 df_summarise_totals <- readRDS(paste0("processed_outputs/df_summarise_totals_", name, ".rds"))
@@ -32,8 +32,9 @@ ggsave("plots/doses_vs_lifting_Rt_rq3.png", height = 6, width = 10)
 # blue-green doses barplot
 df_doses <- df1 %>%
   filter(vaccine_doses != "Pre-vaccine introduction") %>%
-  rename("Dose 1" = "dose1_t", "Dose 2" = "dose2_t", "Dose 3" = "dose3_t") %>%
-  pivot_longer(cols = c("Dose 1", "Dose 2", "Dose 3"), names_to = "dose")
+  rename("Dose 1" = "dose1_t", "Dose 2" = "dose2_t", "Booster" = "dose3_t") %>%
+  pivot_longer(cols = c("Dose 1", "Dose 2", "Booster"), names_to = "dose") %>%
+  mutate(dose = factor(dose, levels = c("Dose 1", "Dose 2", "Booster"), ordered = TRUE))
 
 df1_doses_month <- df_doses %>%
   # filter to last date of each month

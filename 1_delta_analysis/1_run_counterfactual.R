@@ -1,16 +1,15 @@
-
-name <- "rq1_hic_child_abmodel"
+name <- "counterfactual_abmodel"
 
 target_pop <- 1e6
 income_group <- "HIC"
 hs_constraints <- "Present"
 dt <- 0.25
-repetition <- 1:10
+repetition <- 1:5
 vacc_start <- "1/1/2021"
 vaccine_doses <- 2
 vaccine <- "Pfizer"
 max_coverage <- 0.9
-age_groups_covered <- c(15, 16, 17)
+age_groups_covered <- 15
 age_groups_covered_d3 <- 5
 seeding_cases <- 10
 variant_fold_reduction <- 1
@@ -19,6 +18,7 @@ vacc_per_week <- 0.05
 ab_model_infection <- TRUE
 strategy <- "realistic"
 t_d3 <- 180
+mu_ab_infection <- 1.9
 max_Rt <- 5
 
 #### Create scenarios ##########################################################
@@ -40,9 +40,8 @@ scenarios <- expand_grid(income_group = income_group,
                          vacc_per_week = vacc_per_week,
                          ab_model_infection = ab_model_infection,
                          t_d3 = t_d3,
-                         max_Rt = max_Rt) %>%
-  filter((vaccine_doses == 2 & age_groups_covered_d3 == 5 ) | (vaccine_doses == 3) ) %>%
-  unique()
+                         mu_ab_infection = mu_ab_infection,
+                         max_Rt = max_Rt)
 
 scenarios$scenario <- 1:nrow(scenarios)
 scenarios$name <- name
@@ -62,10 +61,13 @@ ctx <- context::context_save("context",
                              package_sources = src)
 
 config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--didemrchnb")
+#config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--dideclusthn")
+
 # Create the queue
 run <- didehpc::queue_didehpc(ctx, config = config)
 # Summary of all available clusters
 # run$cluster_load(nodes = FALSE)
 # Run
 runs <- run$enqueue_bulk(scenarios, run_scenario, do_call = TRUE, progress = TRUE)
+runs$status()
 

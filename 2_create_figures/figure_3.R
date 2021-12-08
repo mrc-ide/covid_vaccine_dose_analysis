@@ -14,9 +14,10 @@ df_summarise_totals <- readRDS(paste0("processed_outputs/df_summarise_totals_", 
 df_doses <- df_summarise %>%
   filter(vaccine_doses != "Pre-vaccine introduction",
          t_d3 == 180) %>%
-  rename("Dose 1" = "dose1_t", "Dose 2" = "dose2_t", "Dose 3" = "dose3_t") %>%
+  rename("Dose 1" = "dose1_t", "Dose 2" = "dose2_t", "Booster" = "dose3_t") %>%
   filter(rollout_rate == "Default") %>%
-  pivot_longer(cols = c("Dose 1", "Dose 2", "Dose 3"), names_to = "dose")
+  pivot_longer(cols = c("Dose 1", "Dose 2", "Booster"), names_to = "dose") %>%
+  mutate(dose = factor(dose, levels = c("Dose 1", "Dose 2", "Booster"), ordered = TRUE))
 
 df1_doses_month <- df_doses %>%
   # filter to last date of each month
@@ -79,7 +80,8 @@ name <- "rq2_lmic_abmodel_omicron"
 
 df_summarise_om <- readRDS(paste0("processed_outputs/df_summarise_", name, ".rds")) %>%
   filter(age_groups_covered == ages_covered,
-         t_d3 == dose_3_t)
+         t_d3 == dose_3_t) %>%
+  mutate(vfr_lab = factor(vfr, levels = c(2,4,8,16), labels = c("VFR = 2", "VFR = 4", "VFR = 8", "VFR = 16"), ordered = TRUE))
 
 df_summarise_totals_om <- readRDS(paste0("processed_outputs/df_summarise_totals_", name, ".rds")) %>%
   filter(age_groups_covered == ages_covered) 
@@ -87,7 +89,7 @@ df_summarise_totals_om <- readRDS(paste0("processed_outputs/df_summarise_totals_
 deaths_omicron <- ggplot(data = filter(df_summarise_om, vacc_per_week == 0.02), aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = vaccine_doses)) +
   geom_ribbon(aes(ymin = deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = vaccine_doses), alpha = 0.5, col = NA) +
   geom_line() +
-  facet_wrap(~vfr) +
+  facet_wrap(~vfr_lab, nrow = 1) +
   theme_bw() +
   theme(strip.background = element_rect(fill = NA),
         panel.border = element_blank(),
@@ -110,15 +112,20 @@ df_delta <- df_summarise_totals %>%
   mutate(vfr = 1,
          scenario = "Delta")
 
-df_barchart <- rbind(df_delta, df_om) %>%
+vfr <- c(2,4,8,16)
+df_barchart <- rbind(df_delta, df_om)
+df_barchart$scenario <- factor(df_barchart$scenario, levels = c("Delta", paste0("Omicron: \nVFR = ", vfr)), ordered = TRUE)
+
+df_barchart <-df_barchart %>%
   filter(!(dose_3_timing == "12 months" & rollout_rate == "Slower rollout")) %>%
   mutate(sensitivity_scenario = if_else(dose_3_timing == "6 months (default)" & rollout_rate == "Default", "Default", if_else(dose_3_timing == "6 months (default)" & rollout_rate == "Slower rollout", "Slower rollout", if_else(dose_3_timing == "12 months" & rollout_rate == "Default", "12 months to booster", "NA")))) %>%
+  filter(sensitivity_scenario != "NA") %>%
   mutate(sensitivity_scenario = factor(sensitivity_scenario, levels = c("Default", "Slower rollout", "12 months to booster")))
 
 # barplot summary of deaths
 p_deaths_summary <- ggplot(data = df_barchart, aes(x = scenario, y = deaths_med/target_pop * 1e6, fill = vaccine_doses)) +
   geom_bar(position = "dodge", stat = "identity", alpha = 0.8) +
-  labs(x = "Variant scenario", y = "Deaths per mill since vacc start", col = "Dose scenario", fill = "Dose scenario") +
+  labs(x = "Variant scenario", y = "Total deaths per million", col = "Dose scenario", fill = "Dose scenario") +
   facet_wrap(~sensitivity_scenario) +
   scale_fill_manual(values = c(col6, col8)) +
   theme_bw() +
@@ -132,7 +139,7 @@ p_deaths_summary
 # barplot summary of incidence
 p_inc_summary <- ggplot(data = df_barchart, aes(x = scenario, y = inc_med/target_pop * 1e6, fill = vaccine_doses)) +
   geom_bar(position = "dodge", stat = "identity", alpha = 0.8) +
-  labs(x = "Variant scenario", y = "Incidence per mill since vacc start", col = "Dose scenario", fill = "Dose scenario") +
+  labs(x = "Variant scenario", y = "Total incidence per million", col = "Dose scenario", fill = "Dose scenario") +
   facet_wrap(~sensitivity_scenario) +
   scale_fill_manual(values = c(col6, col8)) +
   theme_bw() +
@@ -149,12 +156,13 @@ library(patchwork)
 layout <- "
 AB
 CC
+DD
 "
-combined <- plot_doses + deaths_delta + p_deaths_summary +
+combined <- plot_doses + deaths_delta + p_deaths_summary + deaths_omicron +
   plot_annotation(tag_levels = "A") + 
   plot_layout(guides = "collect") + 
-  plot_layout(ncol = 2, nrow = 2, design = layout)
+  plot_layout(ncol = 2, nrow = 3, design = layout)
 
 combined
-ggsave(paste0("plots/fig3_age_groups_covered_", ages_covered, ".png"),combined, height = 7, width = 11)
+ggsave(paste0("plots/fig3_age_groups_covered_", ages_covered, ".png"),combined, height = 10, width = 11)
 

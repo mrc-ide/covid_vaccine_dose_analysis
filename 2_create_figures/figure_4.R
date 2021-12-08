@@ -77,7 +77,7 @@ df2_omicron <- filter(df_summarise_totals_omicron, vacc_per_week == 0.05) %>%
   filter(Rt_lift_t == "Sept '21 lift" | (Rt_lift_t == "Nov '21 lift" & (strategy_name %in% c("10y+ 2 doses, booster 60y+", "10y+ 2 doses, booster 10y+"))) | (Rt_lift_t == "Mar '22 lift" & strategy_name == "10y+ 2 doses, booster 10y+"))
 
 # plot outputs: deaths
-deaths_omicron <- ggplot(data = df1_omicron, aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = strategy_name)) +
+deaths_omicron <- ggplot(data = filter(df1_omicron, vfr == 4, t_d3 == 180), aes(x = as.Date(date), y = deaths_t/target_pop * 1e6, col = strategy_name)) +
   geom_ribbon(aes(ymin = deaths_tmin/target_pop * 1e6, ymax = deaths_tmax/target_pop * 1e6, fill = strategy_name), alpha = 0.5, col = NA) +
   geom_line() +
   facet_wrap(~ Rt_lift_t, nrow = 3) +
@@ -93,7 +93,7 @@ deaths_omicron <- ggplot(data = df1_omicron, aes(x = as.Date(date), y = deaths_t
 
 deaths_omicron
 
-deaths_summary_omicron <- ggplot(data = df2_omicron, aes(x = Rt_lift_t, y = deaths_med / target_pop * 1e6, fill = strategy_name)) +
+deaths_summary_omicron <- ggplot(data = filter(df2_omicron, vfr == 4, t_d3 == 180), aes(x = Rt_lift_t, y = deaths_med / target_pop * 1e6, fill = strategy_name)) +
   geom_col(position = position_dodge2(width = 0.9, preserve = "single"))+
   theme_bw() +
   theme(strip.background = element_rect(fill = NA),

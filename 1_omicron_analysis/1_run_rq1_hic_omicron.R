@@ -1,21 +1,5 @@
-library(safir)
-library(squire)
-library(nimue)
-library(data.table)
-library(ggplot2)
-library(parallel)
-library(tidyverse)
-library(countrycode)
-library(furrr)
-library(zoo)
-library(here)
 
-source("R/utils.R")
-source("R/run_function_abmodel_age.R")
-source("R/plotting_utils.R")
-source("R/vaccine_strategy.R")
-
-name <- "rq1_hic_abmodel_age"
+name <- "rq1_hic_abmodel_omicron"
 
 target_pop <- 1e6
 income_group <- "HIC"
@@ -34,8 +18,12 @@ dose_3_fold_increase <- 6
 vacc_per_week <- 0.05
 ab_model_infection <- TRUE
 strategy <- "realistic"
-t_d3 <- 180
+t_d3 <- c(90, 180)
 max_Rt <- 5
+max_Rt_omicron <- 7.5
+vfr <- c(2,4,8,16)
+vfr_time1 <- "11/15/2021"
+vfr_time2 <- "12/31/2021"
 
 #### Create scenarios ##########################################################
 
@@ -56,7 +44,11 @@ scenarios <- expand_grid(income_group = income_group,
                          vacc_per_week = vacc_per_week,
                          ab_model_infection = ab_model_infection,
                          t_d3 = t_d3,
-                         max_Rt = max_Rt) %>%
+                         max_Rt = max_Rt,
+                         max_Rt_omicron = max_Rt_omicron,
+                         vfr = vfr,
+                         vfr_time1 = vfr_time1,
+                         vfr_time2 = vfr_time2) %>%
   filter((vaccine_doses == 2 & age_groups_covered_d3 == 5 ) | (vaccine_doses == 3) ) %>%
   unique()
 
@@ -70,7 +62,7 @@ write_csv(scenarios, paste0("scenarios_", name, ".csv"))
 
 #### Run the model on cluster ###############################################
 # Load functions
-sources <- c("R/run_function_abmodel_age.R", "R/utils.R", "R/vaccine_strategy.R")
+sources <- c("R/run_function_abmodel_omicron.R", "R/utils.R", "R/vaccine_strategy.R")
 src <- conan::conan_sources(c("mrc-ide/safir", "mrc-ide/squire", "mrc-ide/nimue"))
 ctx <- context::context_save("context",
                              sources = sources,
@@ -78,11 +70,13 @@ ctx <- context::context_save("context",
                              package_sources = src)
 
 config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--didemrchnb")
+#config <- didehpc::didehpc_config(use_rrq = FALSE, use_workers = FALSE, cluster="fi--dideclusthn")
+
 # Create the queue
 run <- didehpc::queue_didehpc(ctx, config = config)
 # Summary of all available clusters
 # run$cluster_load(nodes = FALSE)
 # Run
-runs <- run$enqueue_bulk(scenarios, run_scenario_abmodel_age, do_call = TRUE, progress = TRUE)
+runs <- run$enqueue_bulk(scenarios, run_scenario, do_call = TRUE, progress = TRUE)
 runs$status()
 

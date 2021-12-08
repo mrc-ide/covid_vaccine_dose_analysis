@@ -1,4 +1,4 @@
-name <- "rq3_hic_abmodel_zerocovid"
+name <- "rq3_hic_abmodel_zerocovid_omicron"
 
 df_summarise <- readRDS(paste0("processed_outputs/df_summarise_", name, ".rds"))
 df_summarise_totals <- readRDS(paste0("processed_outputs/df_summarise_totals_", name, ".rds"))
@@ -21,12 +21,12 @@ df1 <- df1 %>%
                              if_else(Rt_lift_t == "Nov '21 lift", as.Date("2021-11-01"), 
                                                                           if_else(Rt_lift_t == "Mar '22 lift", as.Date("2022-03-01"), as.Date("2022-12-01")))))
 # plot total doses against Rt lifting to check timing
-ggplot(data = df1, aes(x = as.Date(date), y = vaccines_t / target_pop)) +
+ggplot(data = filter(df1, vfr == 4), aes(x = as.Date(date), y = vaccines_t / target_pop, linetype = factor(t_d3))) +
   geom_line() +
   geom_line(aes(x = as.Date(date), y = Rt), col = "red") +
   facet_grid(Rt_lift_t ~ strategy_name) +
   labs(x = "Date. Note red line shows lifting Rt", y = "Doses delivered per person")
-ggsave("plots/doses_vs_lifting_Rt_rq3.png", height = 6, width = 10)
+ggsave("plots/doses_vs_lifting_Rt_rq3_omicron.png", height = 6, width = 10)
 
 #################################################
 # blue-green doses barplot
